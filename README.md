@@ -1,5 +1,3 @@
-# DataPeek
-
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="app/img/datapeek-logo-readme-dark.png">
   <img src="app/img/datapeek-logo.png" alt="DataPeek logo" width="420">
