@@ -1,6 +1,9 @@
 # DataPeek
 
-![DataPeek logo](app/img/datapeek-logo.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="app/img/datapeek-logo-readme-dark.png">
+  <img src="app/img/datapeek-logo.png" alt="DataPeek logo" width="420">
+</picture>
 
 Fast, minimal profiler for CSV and Parquet files.
 
