@@ -83,7 +83,7 @@ make clean     # remove pytest and Python cache files
 
 ## Render Deployment
 
-`render.yaml` configures DataPeek as a single Render web service on the paid `starter` plan.
+`render.yaml` configures DataPeek as a single Render web service on Render's `free` plan.
 
 - Health check: `/health`
 - Build command: `pip install uv && uv sync --locked`
@@ -93,7 +93,8 @@ make clean     # remove pytest and Python cache files
 Operational assumptions for this deployment:
 
 - Uploads and resample tokens are stored in process memory only.
-- Restart, redeploy, or crash clears uploaded file state.
+- Restart, redeploy, crash, or free-tier spin-down clears uploaded file state.
 - The service should stay at a single instance unless upload state is moved out of memory.
-- A starter instance is the recommended baseline because the app parses uploaded CSV and Parquet files in memory with Polars.
+- Render free web services spin down after 15 minutes of inactivity, so the first request after idle can take about a minute to recover.
+- Free web services do not support persistent disks or scaling beyond a single instance.
 - Keep uploads modest in size. The app will warn on larger files, but this MVP is not optimized for large datasets or concurrent heavy uploads.

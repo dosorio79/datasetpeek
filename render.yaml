@@ -2,7 +2,7 @@ services:
   - type: web
     name: datapeek
     runtime: python
-    plan: starter
+    plan: free
     healthCheckPath: /health
     buildCommand: "pip install uv && uv sync --locked"
     startCommand: "uv run python main.py"
