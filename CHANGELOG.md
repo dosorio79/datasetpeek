@@ -11,9 +11,10 @@ The format is based on Keep a Changelog, and this project uses semantic versioni
 - Upload intake now rejects files above 100 MB before parsing or caching.
 - Large-file warnings now start above 50 MB.
 - Resample now renders validation errors instead of bubbling parse failures.
+- Robyn route handlers no longer use annotations that break OpenAPI generation during deployment startup.
 
 ### Added
-- Regression tests for raw multipart fallback, multi-part dataset selection, oversized upload rejection, and resample validation errors.
+- Regression tests for raw multipart fallback, multi-part dataset selection, oversized upload rejection, resample validation errors, and OpenAPI route preparation.
 
 ## [0.1.1] - 2026-04-20
 
