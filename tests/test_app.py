@@ -249,6 +249,12 @@ def test_health_endpoint_returns_ok():
     assert response.text == '{"status":"ok"}'
 
 
+def test_openapi_route_preparation_accepts_registered_handlers():
+    app = create_app()
+
+    app._add_openapi_routes()
+
+
 def test_runtime_config_prefers_environment_port_and_default_host():
     host, port = parse_runtime_config(environ={"PORT": "9090"})
 

@@ -28,7 +28,7 @@ def create_app() -> Robyn:
     register_profile_routes(app=app, templates=TEMPLATES, upload_store=UPLOAD_STORE)
 
     @app.get("/health")
-    def health() -> Response:
+    def health():
         return Response(
             status_code=200,
             headers={"Content-Type": "application/json; charset=utf-8"},
@@ -36,7 +36,7 @@ def create_app() -> Robyn:
         )
 
     @app.get("/static/styles.css")
-    def styles() -> Response:
+    def styles():
         stylesheet = (BASE_DIR / "static" / "styles.css").read_text(encoding="utf-8")
         return Response(
             status_code=200,
@@ -45,7 +45,7 @@ def create_app() -> Robyn:
         )
 
     @app.get("/static/logo.png")
-    def logo() -> Response:
+    def logo():
         return Response(
             status_code=200,
             headers={"Content-Type": "image/png", "Cache-Control": "no-store"},
@@ -53,7 +53,7 @@ def create_app() -> Robyn:
         )
 
     @app.get("/favicon.ico")
-    def favicon() -> Response:
+    def favicon():
         return Response(
             status_code=200,
             headers={"Content-Type": "image/x-icon", "Cache-Control": "no-store"},
@@ -61,7 +61,7 @@ def create_app() -> Robyn:
         )
 
     @app.get("/static/favicon-32.png")
-    def favicon_png() -> Response:
+    def favicon_png():
         return Response(
             status_code=200,
             headers={"Content-Type": "image/png", "Cache-Control": "no-store"},
@@ -69,7 +69,7 @@ def create_app() -> Robyn:
         )
 
     @app.get("/static/apple-touch-icon.png")
-    def apple_touch_icon() -> Response:
+    def apple_touch_icon():
         return Response(
             status_code=200,
             headers={"Content-Type": "image/png", "Cache-Control": "no-store"},

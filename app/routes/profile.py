@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 from robyn import Robyn
 from robyn.templating import JinjaTemplate
 
@@ -14,7 +12,7 @@ def register_profile_routes(*, app: Robyn, templates: JinjaTemplate, upload_stor
     """Register upload analysis and sample-resampling routes."""
 
     @app.post("/analyze")
-    def analyze(request: Any = None, files: Any = None, form_data: dict[str, str] | None = None) -> str:
+    def analyze(request=None, files=None, form_data=None):
         try:
             preferred_filename = (form_data or {}).get("dataset_name")
             uploaded_file = UploadedFile.from_request_files(files, request=request, preferred_filename=preferred_filename)
@@ -34,7 +32,7 @@ def register_profile_routes(*, app: Robyn, templates: JinjaTemplate, upload_stor
         return templates.render_template("home.html", **context)
 
     @app.post("/resample")
-    def resample(form_data: dict[str, str] | None = None) -> str:
+    def resample(form_data=None):
         token = (form_data or {}).get("upload_token", "")
         seed_text = (form_data or {}).get("resample_seed", "42")
 
