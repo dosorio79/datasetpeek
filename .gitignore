@@ -11,3 +11,4 @@ wheels/
 
 # Local tooling files
 .codex
+.github/agents/
