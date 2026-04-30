@@ -30,6 +30,12 @@ def detect_column_signals(
     unique_count: int,
     missing_count: int,
 ) -> list[dict[str, Any]]:
+    """Return high-signal column warnings for first-contact dataset review.
+
+    The heuristics favor cheap, explainable checks over exhaustive profiling so
+    the app remains an orientation tool instead of a full EDA report.
+    """
+
     signals: list[dict[str, Any]] = []
 
     non_null = series.drop_nulls()
@@ -102,6 +108,8 @@ def _signal(column: str, kind: str, message: str) -> dict[str, str]:
 
 
 def _looks_like_id(column_name: str, series: pl.Series, unique_ratio: float, non_null_ratio: float) -> bool:
+    """Detect likely row or entity identifiers from names and uniqueness."""
+
     has_id_name = bool(ID_HINT_PATTERN.search(column_name.lower()))
     if has_id_name:
         return True
@@ -113,6 +121,8 @@ def _looks_like_id(column_name: str, series: pl.Series, unique_ratio: float, non
 
 
 def _needs_value_count_scan(*, unique_count: int, unique_ratio: float) -> bool:
+    """Limit value-count scans to columns likely to produce concise signals."""
+
     if unique_count <= 2:
         return True
     return unique_ratio <= VALUE_COUNT_CANDIDATE_UNIQUE_RATIO
@@ -128,6 +138,8 @@ def _binary_message(value_counts: pl.DataFrame, non_null_count: int) -> str:
 
 
 def _is_likely_categorical(series: pl.Series, unique_count: int, row_count: int) -> bool:
+    """Detect compact string-like domains that help users orient quickly."""
+
     if series.dtype.is_numeric():
         return False
     unique_ratio = unique_count / row_count if row_count else 0
@@ -160,6 +172,8 @@ def _is_binary_target_domain(value_counts: pl.DataFrame) -> bool:
 
 
 def _has_mixed_types(series: pl.Series) -> bool:
+    """Flag string columns that mix numeric-looking values with free text."""
+
     if series.dtype != pl.String:
         return False
     sample = [str(value).strip() for value in series.head(50).to_list() if str(value).strip()]
@@ -185,6 +199,8 @@ def _is_numeric_discrete(
     unique_count: int,
     non_null_unique_ratio: float,
 ) -> bool:
+    """Detect integer-coded categories without treating binary or ID columns as categorical."""
+
     if not series.dtype.is_integer():
         return False
     if unique_count < 3 or unique_count > NUMERIC_DISCRETE_MAX_UNIQUE:

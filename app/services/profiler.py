@@ -9,6 +9,8 @@ from app.services.heuristics import detect_column_signals
 
 
 def empty_view_model(*, error_message: str | None = None) -> dict[str, Any]:
+    """Return the template context for the upload-first empty state."""
+
     return {
         "page_title": "DataPeek",
         "error_message": error_message,
@@ -36,6 +38,12 @@ def build_profile_view_model(
     upload_token: str,
     sample_seed: int,
 ) -> dict[str, Any]:
+    """Build the single-page profile context from a loaded dataset.
+
+    This function is the product surface for the profiler: it keeps DataPeek to
+    a fast first-contact summary, column signals, small previews, and no EDA UI.
+    """
+
     row_count = dataframe.height
     column_count = dataframe.width
     column_metrics, numeric_metrics = _collect_lazy_metrics(dataframe)
@@ -99,6 +107,8 @@ def build_profile_view_model(
 
 
 def _sample_values(series: pl.Series) -> list[str]:
+    """Return a tiny representative value set for the column overview table."""
+
     values = series.drop_nulls().unique(maintain_order=True).head(3).to_list()
     return [_truncate(_format_value(value)) for value in values]
 
@@ -151,12 +161,16 @@ def _collect_lazy_metrics(dataframe: pl.DataFrame) -> tuple[dict[str, dict[str, 
 
 
 def _sample_frame(dataframe: pl.DataFrame, sample_seed: int) -> pl.DataFrame:
+    """Return the preview sample, capped at ten rows."""
+
     if dataframe.height <= 10:
         return dataframe
     return dataframe.sample(n=10, shuffle=True, seed=sample_seed)
 
 
 def _table_rows(dataframe: pl.DataFrame) -> list[dict[str, str]]:
+    """Format a Polars frame for compact HTML table rendering."""
+
     rows: list[dict[str, str]] = []
     for row in dataframe.iter_rows(named=True):
         rows.append({column: _truncate(_format_value(value)) for column, value in row.items()})

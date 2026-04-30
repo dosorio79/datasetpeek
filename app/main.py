@@ -19,6 +19,8 @@ APPLE_TOUCH_ICON_PATH = BASE_DIR / "static" / "apple-touch-icon.png"
 
 
 def create_app() -> Robyn:
+    """Create the Robyn app and register DataPeek's small route surface."""
+
     # Robyn needs the module file path so it can anchor internal configuration.
     app = Robyn(__file__)
 
@@ -26,7 +28,7 @@ def create_app() -> Robyn:
     register_profile_routes(app=app, templates=TEMPLATES, upload_store=UPLOAD_STORE)
 
     @app.get("/health")
-    def health():
+    def health() -> Response:
         return Response(
             status_code=200,
             headers={"Content-Type": "application/json; charset=utf-8"},
@@ -34,7 +36,7 @@ def create_app() -> Robyn:
         )
 
     @app.get("/static/styles.css")
-    def styles():
+    def styles() -> Response:
         stylesheet = (BASE_DIR / "static" / "styles.css").read_text(encoding="utf-8")
         return Response(
             status_code=200,
@@ -43,7 +45,7 @@ def create_app() -> Robyn:
         )
 
     @app.get("/static/logo.png")
-    def logo():
+    def logo() -> Response:
         return Response(
             status_code=200,
             headers={"Content-Type": "image/png", "Cache-Control": "no-store"},
@@ -51,7 +53,7 @@ def create_app() -> Robyn:
         )
 
     @app.get("/favicon.ico")
-    def favicon():
+    def favicon() -> Response:
         return Response(
             status_code=200,
             headers={"Content-Type": "image/x-icon", "Cache-Control": "no-store"},
@@ -59,7 +61,7 @@ def create_app() -> Robyn:
         )
 
     @app.get("/static/favicon-32.png")
-    def favicon_png():
+    def favicon_png() -> Response:
         return Response(
             status_code=200,
             headers={"Content-Type": "image/png", "Cache-Control": "no-store"},
@@ -67,7 +69,7 @@ def create_app() -> Robyn:
         )
 
     @app.get("/static/apple-touch-icon.png")
-    def apple_touch_icon():
+    def apple_touch_icon() -> Response:
         return Response(
             status_code=200,
             headers={"Content-Type": "image/png", "Cache-Control": "no-store"},
@@ -81,4 +83,6 @@ app = create_app()
 
 
 def run(*, host: str = "0.0.0.0", port: int = 8080) -> None:
+    """Start the module-level app with deployment-friendly host and port values."""
+
     app.start(host=host, port=port)

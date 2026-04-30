@@ -7,6 +7,7 @@
 
 **Name:** DataPeek  
 **Type:** Single-page web app  
+**Current version:** 0.1.1  
 
 **Goal:**
 > Understand a dataset in seconds.
@@ -19,7 +20,57 @@
 
 ---
 
-## 2. Problem
+## 2. Version Roadmap
+
+### 0.1.1 — Current Version
+
+MVP first-contact profiler for CSV and Parquet files.
+
+Focus:
+- upload CSV or Parquet
+- return a fast single-page profile
+- surface high-signal column warnings
+- show schema, missingness, uniqueness, numeric summaries, and sample rows
+- avoid charts, correlations, dashboards, and exploratory workflows
+
+---
+
+### 0.2.0 — Next Product Evolution
+
+The next version should make DataPeek a stronger dataset triage assistant while preserving its first-contact scope.
+
+Goal:
+
+> Tell me what this dataset appears to be, what looks risky, and what I should check next.
+
+Planned direction:
+- dataset orientation summary
+- column role detection
+- stronger data quality signals
+- capped categorical top values
+- lightweight “next checks”
+- schema comparison
+- markdown and JSON export
+- larger-file performance improvements
+
+This version should improve guidance and signal quality without adding full EDA behavior.
+
+---
+
+### 1.0.0 — Stable First-Contact Profiler
+
+A polished, reliable version of DataPeek once the core first-contact profiling experience is complete and stable.
+
+A `1.0.0` release should represent:
+- stable CSV and Parquet handling
+- reliable profiling heuristics
+- clear error handling
+- predictable performance within documented file limits
+- a clean, minimal interface suitable for repeated technical use
+
+---
+
+## 3. Problem
 
 Users frequently receive datasets and need a **quick first-pass understanding**:
 - structure  
@@ -34,7 +85,7 @@ Existing tools:
 
 ---
 
-## 3. Target Users
+## 4. Target Users
 
 - Data scientists  
 - Data analysts  
@@ -43,13 +94,13 @@ Existing tools:
 
 ---
 
-## 4. Key Use Case
+## 5. Key Use Case
 
 > “I just received this file — tell me what I’m looking at.”
 
 ---
 
-## 5. MVP Scope
+## 6. 0.1.1 Current Scope
 
 ### Input
 - Upload:
@@ -62,11 +113,11 @@ Existing tools:
 
 ---
 
-## 6. Output (Single Page)
+## 7. Output (Single Page)
 
 ---
 
-### 6.1 File Summary
+### 7.1 File Summary
 
 - filename  
 - file type (CSV / Parquet)  
@@ -76,7 +127,7 @@ Existing tools:
 
 ---
 
-### 6.2 Signals / Warnings (Core Feature)
+### 7.2 Signals / Warnings (Core Feature)
 
 Heuristic-driven insights per column:
 
@@ -114,7 +165,7 @@ Display:
 
 ---
 
-### 6.3 Column Overview Table
+### 7.3 Column Overview Table
 
 Per column:
 
@@ -127,7 +178,7 @@ Per column:
 
 ---
 
-### 6.4 Numeric Summary
+### 7.4 Numeric Summary
 
 For numeric columns (int + float only):
 
@@ -138,7 +189,7 @@ For numeric columns (int + float only):
 
 ---
 
-### 6.5 Data Preview
+### 7.5 Data Preview
 
 #### Primary:
 **Random Sample**
@@ -155,7 +206,7 @@ For numeric columns (int + float only):
 
 ---
 
-## 7. UX Structure
+## 8. UX Structure
 
 ~~~
 Upload
@@ -175,7 +226,7 @@ Upload
 
 ---
 
-## 8. Heuristics Definitions
+## 9. Heuristics Definitions
 
 ### Possible ID
 - uniqueness ratio ≈ 1.0  
@@ -225,7 +276,7 @@ Upload
 
 ---
 
-## 9. Technical Design
+## 10. Technical Design
 
 ### Stack
 
@@ -295,7 +346,7 @@ df.sample(n=10, seed=42)
 
 ---
 
-## 10. Performance Principles
+## 11. Performance Principles
 
 - compute only essential stats  
 - reuse aggregates across heuristics  
@@ -305,7 +356,7 @@ df.sample(n=10, seed=42)
 
 ---
 
-## 11. UI Constraints
+## 12. UI Constraints
 
 - truncate long text (~50 chars)  
 - horizontal scroll for wide tables  
@@ -313,7 +364,7 @@ df.sample(n=10, seed=42)
 
 ---
 
-## 12. Error Handling (Minimal)
+## 13. Error Handling (Minimal)
 
 - unsupported file → message  
 - parsing failure → fallback / error  
@@ -321,7 +372,7 @@ df.sample(n=10, seed=42)
 
 ---
 
-## 13. Non-Goals (Strict)
+## 14. Non-Goals (Strict)
 
 - correlations  
 - charts / histograms  
@@ -334,7 +385,7 @@ df.sample(n=10, seed=42)
 
 ---
 
-## 14. Success Criteria
+## 15. Success Criteria
 
 - dataset understood in <10 seconds  
 - key signals visible immediately  
@@ -343,7 +394,7 @@ df.sample(n=10, seed=42)
 
 ---
 
-## 15. Future Extensions
+## 16. Future Extensions
 
 - top values for categorical columns  
 - markdown export  
@@ -354,14 +405,14 @@ df.sample(n=10, seed=42)
 
 ---
 
-## 16. Positioning
+## 17. Positioning
 
 > DataPeek is not an EDA tool.  
 > It is a **first-contact data profiler**.
 
 ---
 
-## 17. Build Scope
+## 18. Build Scope
 
 - achievable in **1–2 focused sessions**  
 - no infrastructure complexity  

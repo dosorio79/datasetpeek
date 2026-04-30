@@ -17,11 +17,15 @@ _FILENAME_PATTERN = re.compile(r'filename="([^"]+)"')
 
 
 class FileValidationError(ValueError):
+    """User-facing upload or parsing validation failure."""
+
     pass
 
 
 @dataclass(slots=True)
 class UploadedFile:
+    """Normalized file upload accepted by the profiling pipeline."""
+
     filename: str
     content: bytes
     file_type: str
@@ -33,6 +37,8 @@ class UploadedFile:
         request: Any | None = None,
         preferred_filename: str | None = None,
     ) -> "UploadedFile":
+        """Normalize Robyn multipart inputs into a supported CSV or Parquet file."""
+
         candidate = _unwrap_uploaded_value(files)
         filename = preferred_filename or _read_attr(candidate, "filename") or _read_attr(candidate, "name") or "upload"
         content = _read_bytes(candidate)
@@ -63,6 +69,8 @@ class UploadedFile:
 
 
 def read_uploaded_file(uploaded_file: UploadedFile) -> tuple[pl.DataFrame, int, list[str]]:
+    """Read an uploaded file into Polars and return elapsed read time plus warnings."""
+
     start = perf_counter()
     warnings: list[str] = []
 
@@ -82,6 +90,8 @@ def read_uploaded_file(uploaded_file: UploadedFile) -> tuple[pl.DataFrame, int, 
 
 
 def _read_csv(content: bytes, warnings: list[str]) -> pl.DataFrame:
+    """Read CSV content with delimiter detection and a conservative fallback path."""
+
     separator, auto_detected = _detect_csv_separator(content)
     if not auto_detected:
         warnings.append("CSV delimiter could not be auto-detected; falling back to comma.")
@@ -106,6 +116,8 @@ def _read_csv(content: bytes, warnings: list[str]) -> pl.DataFrame:
 
 
 def _detect_csv_separator(content: bytes) -> tuple[str, bool]:
+    """Detect a small supported delimiter set without turning CSV ingest into EDA."""
+
     sample = content[:65536].decode("utf-8", errors="replace")
     if not sample.strip():
         return ",", False
@@ -216,6 +228,8 @@ def _read_bytes(candidate: Any) -> bytes:
 
 
 def _extract_upload_from_multipart_request(request: Any) -> UploadedFile | None:
+    """Recover file metadata from raw multipart bodies when Robyn omits it."""
+
     raw_body = getattr(request, "body", b"")
     if isinstance(raw_body, str):
         body = raw_body.encode("utf-8", errors="ignore")
@@ -299,6 +313,8 @@ def _header_value(headers: Any, key: str) -> str | None:
 
 
 def _infer_file_type(content: bytes) -> str | None:
+    """Infer file type only when upload metadata is missing."""
+
     if content.startswith(b"PAR1"):
         return "parquet"
 
