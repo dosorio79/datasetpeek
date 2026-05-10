@@ -145,8 +145,8 @@ h2 {
 
 .upload-form {
   display: grid;
-  grid-template-columns: minmax(260px, 0.85fr) minmax(360px, 1.15fr) auto;
-  gap: 0.9rem;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(360px, 1.2fr) auto;
+  gap: 1rem;
   align-items: end;
   width: 100%;
 }
@@ -162,8 +162,13 @@ h2 {
   align-items: end;
 }
 
-.s3-controls {
-  display: block;
+.upload-source-s3 {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.field-heading {
+  min-width: 0;
 }
 
 .label,
@@ -275,6 +280,12 @@ button:disabled:hover {
 
 .summary-grid > .stat {
   min-width: 0;
+}
+
+.result-note {
+  margin: -0.15rem 0 0.75rem;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 .stat strong {
@@ -426,10 +437,6 @@ summary {
   }
 
   .upload-source-file {
-    grid-template-columns: 1fr;
-  }
-
-  .s3-controls {
     grid-template-columns: 1fr;
   }
 

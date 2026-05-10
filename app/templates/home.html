@@ -8,18 +8,18 @@
   <section class="panel">
     <form action="/analyze" method="post" enctype="multipart/form-data" class="upload-form" id="upload-form">
       <div class="upload-source upload-source-file">
-        <div>
-          <label for="dataset" class="label">Dataset source</label>
-          <p class="input-help" id="source-summary">Choose a CSV/Parquet file or enter an S3 / MinIO URI.</p>
+        <div class="field-heading">
+          <label for="dataset" class="label">Local file</label>
+          <p class="input-help" id="source-summary">No file selected.</p>
         </div>
         <input id="dataset" name="dataset" type="file" accept=".csv,.parquet" class="sr-only">
         <input id="dataset-name" name="dataset_name" type="hidden">
         <button type="button" class="secondary-button" id="upload-trigger">Choose file</button>
       </div>
       <div class="upload-source upload-source-s3">
-        <div class="s3-controls">
-          <input id="s3-uri" name="s3_uri" type="text" inputmode="url" placeholder="s3://bucket/path/data.csv">
-        </div>
+        <label for="s3-uri" class="label">S3 / MinIO URI</label>
+        <input id="s3-uri" name="s3_uri" type="text" inputmode="url" placeholder="s3://bucket/path/data.csv">
+        <p class="input-help">Uses the server-configured object storage credentials.</p>
       </div>
       <button type="submit" id="analyze-submit">Analyze</button>
     </form>
@@ -35,10 +35,11 @@
     <section class="grid summary-grid">
       <article class="panel stat"><span>Filename</span><strong class="stat-value filename-value" title="{{ file_summary.filename }}">{{ file_summary.filename }}</strong></article>
       <article class="panel stat"><span>Type</span><strong>{{ file_summary.file_type }}</strong></article>
-      <article class="panel stat"><span>Rows</span><strong>{{ file_summary.rows }}</strong></article>
+      <article class="panel stat"><span>Rows analyzed</span><strong>{{ file_summary.rows }}</strong></article>
       <article class="panel stat"><span>Columns</span><strong>{{ file_summary.columns }}</strong></article>
       <article class="panel stat"><span>Read time</span><strong>{{ file_summary.read_time_ms }} ms</strong></article>
     </section>
+    <p class="result-note">Counts, signals, and summaries describe the loaded file or object. If that object is an exported sample, these are sample-level results, not full-source totals.</p>
 
     <section class="panel">
       <div class="section-heading">
@@ -218,7 +219,7 @@
       <div class="empty-grid">
         <article>
           <strong>File summary</strong>
-          <p>Filename, type, row count, column count, read time.</p>
+          <p>Filename, type, rows analyzed, column count, read time.</p>
         </article>
         <article>
           <strong>Signals</strong>
@@ -257,9 +258,9 @@
         if (file) {
           sourceSummary.textContent = file.name;
         } else if (s3Uri) {
-          sourceSummary.textContent = s3Uri;
+          sourceSummary.textContent = "S3 source selected.";
         } else {
-          sourceSummary.textContent = "Choose a CSV/Parquet file or enter an S3 / MinIO URI.";
+          sourceSummary.textContent = "No file selected.";
         }
       };
 
