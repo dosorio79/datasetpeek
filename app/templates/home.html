@@ -35,11 +35,11 @@
     <section class="grid summary-grid">
       <article class="panel stat"><span>Filename</span><strong class="stat-value filename-value" title="{{ file_summary.filename }}">{{ file_summary.filename }}</strong></article>
       <article class="panel stat"><span>Type</span><strong>{{ file_summary.file_type }}</strong></article>
-      <article class="panel stat"><span>Rows analyzed</span><strong>{{ file_summary.rows }}</strong></article>
+      <article class="panel stat"><span>Rows</span><strong>{{ file_summary.rows }}</strong></article>
       <article class="panel stat"><span>Columns</span><strong>{{ file_summary.columns }}</strong></article>
       <article class="panel stat"><span>Read time</span><strong>{{ file_summary.read_time_ms }} ms</strong></article>
     </section>
-    <p class="result-note">Counts, signals, and summaries describe the loaded file or object. If that object is an exported sample, these are sample-level results, not full-source totals.</p>
+    <p class="result-note">DataPeek profiles the full uploaded file or S3 object when it is within the size limit. If the object is an exported sample, these results describe that sample.</p>
 
     <section class="panel">
       <div class="section-heading">
@@ -219,7 +219,7 @@
       <div class="empty-grid">
         <article>
           <strong>File summary</strong>
-          <p>Filename, type, rows analyzed, column count, read time.</p>
+          <p>Filename, type, row count, column count, read time.</p>
         </article>
         <article>
           <strong>Signals</strong>
