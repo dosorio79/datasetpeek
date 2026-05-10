@@ -7,19 +7,33 @@
 
   <section class="panel">
     <form action="/analyze" method="post" enctype="multipart/form-data" class="upload-form" id="upload-form">
-      <div class="upload-source upload-source-file">
-        <div class="field-heading">
-          <label for="dataset" class="label">Local file</label>
-          <p class="input-help" id="source-summary">No file selected.</p>
+      <fieldset class="source-switch" aria-label="Dataset source">
+        <legend class="label">Dataset source</legend>
+        <label class="source-option">
+          <input type="radio" name="source_mode" value="file" checked>
+          <span>Local file</span>
+        </label>
+        <label class="source-option">
+          <input type="radio" name="source_mode" value="s3">
+          <span>S3 / MinIO URI</span>
+        </label>
+      </fieldset>
+
+      <div class="source-row">
+        <div class="upload-source upload-source-file" data-source-panel="file">
+          <div class="field-heading">
+            <label for="dataset" class="label">Local file</label>
+            <p class="input-help" id="source-summary">No file selected.</p>
+          </div>
+          <input id="dataset" name="dataset" type="file" accept=".csv,.parquet" class="sr-only">
+          <input id="dataset-name" name="dataset_name" type="hidden">
+          <button type="button" class="secondary-button" id="upload-trigger">Choose file</button>
         </div>
-        <input id="dataset" name="dataset" type="file" accept=".csv,.parquet" class="sr-only">
-        <input id="dataset-name" name="dataset_name" type="hidden">
-        <button type="button" class="secondary-button" id="upload-trigger">Choose file</button>
-      </div>
-      <div class="upload-source upload-source-s3">
-        <label for="s3-uri" class="label">S3 / MinIO URI</label>
-        <input id="s3-uri" name="s3_uri" type="text" inputmode="url" placeholder="s3://bucket/path/data.csv">
-        <p class="input-help">Uses the server-configured object storage credentials.</p>
+        <div class="upload-source upload-source-s3" data-source-panel="s3">
+          <label for="s3-uri" class="label">S3 / MinIO URI</label>
+          <input id="s3-uri" name="s3_uri" type="text" inputmode="url" placeholder="s3://bucket/path/data.csv">
+          <p class="input-help">Uses the server-configured object storage credentials.</p>
+        </div>
       </div>
       <button type="submit" id="analyze-submit">Analyze</button>
     </form>
@@ -246,28 +260,48 @@
       const sourceSummary = document.getElementById("source-summary");
       const analyzeSubmit = document.getElementById("analyze-submit");
       const trigger = document.getElementById("upload-trigger");
+      const modeInputs = [...document.querySelectorAll('input[name="source_mode"]')];
+      const sourcePanels = [...document.querySelectorAll("[data-source-panel]")];
 
-      if (!form || !fileInput || !filenameInput || !s3Input || !sourceSummary || !analyzeSubmit || !trigger) {
+      if (!form || !fileInput || !filenameInput || !s3Input || !sourceSummary || !analyzeSubmit || !trigger || modeInputs.length === 0 || sourcePanels.length === 0) {
         return;
       }
+
+      const activeMode = () => modeInputs.find((input) => input.checked)?.value || "file";
 
       const syncSubmit = () => {
         const [file] = fileInput.files || [];
         const s3Uri = s3Input.value.trim();
-        analyzeSubmit.disabled = !file && !s3Uri;
+        const mode = activeMode();
+        sourcePanels.forEach((panel) => {
+          panel.hidden = panel.dataset.sourcePanel !== mode;
+        });
+        analyzeSubmit.disabled = mode === "file" ? !file : !s3Uri;
         if (file) {
           sourceSummary.textContent = file.name;
-        } else if (s3Uri) {
-          sourceSummary.textContent = "S3 source selected.";
         } else {
           sourceSummary.textContent = "No file selected.";
         }
       };
 
       syncSubmit();
+      modeInputs.forEach((input) => {
+        input.addEventListener("change", () => {
+          if (activeMode() === "file") {
+            s3Input.value = "";
+          } else {
+            fileInput.value = "";
+            filenameInput.value = "";
+          }
+          syncSubmit();
+        });
+      });
       trigger.addEventListener("click", () => fileInput.click());
       s3Input.addEventListener("input", () => {
         if (s3Input.value.trim()) {
+          modeInputs.forEach((input) => {
+            input.checked = input.value === "s3";
+          });
           fileInput.value = "";
           filenameInput.value = "";
         }
@@ -280,12 +314,15 @@
           return;
         }
         filenameInput.value = file.name;
+        modeInputs.forEach((input) => {
+          input.checked = input.value === "file";
+        });
         s3Input.value = "";
         syncSubmit();
       });
       form.addEventListener("submit", (event) => {
         const [file] = fileInput.files || [];
-        if (!file && !s3Input.value.trim()) {
+        if ((activeMode() === "file" && !file) || (activeMode() === "s3" && !s3Input.value.trim())) {
           event.preventDefault();
         }
       });

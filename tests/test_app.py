@@ -278,6 +278,10 @@ def test_home_renders_help_menu():
     response = client.get("/")
 
     assert response.status_code == 200
+    assert 'name="source_mode" value="file" checked' in response.text
+    assert 'name="source_mode" value="s3"' in response.text
+    assert 'data-source-panel="file"' in response.text
+    assert 'data-source-panel="s3"' in response.text
     assert "Local file" in response.text
     assert "S3 / MinIO URI" in response.text
     assert "Uses the server-configured object storage credentials." in response.text
