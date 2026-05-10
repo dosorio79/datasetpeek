@@ -55,6 +55,34 @@ def test_read_uploaded_csv_and_detect_signals():
     assert len(profile["sample_rows"]) == 10
 
 
+def test_profile_uses_operational_display_settings(monkeypatch):
+    monkeypatch.setenv("DATAPEEK_RANDOM_SAMPLE_ROWS", "3")
+    monkeypatch.setenv("DATAPEEK_HEAD_TAIL_ROWS", "2")
+    monkeypatch.setenv("DATAPEEK_SAMPLE_VALUE_COUNT", "1")
+    monkeypatch.setenv("DATAPEEK_TEXT_TRUNCATE_CHARS", "8")
+    uploaded_file = UploadedFile(
+        filename="sample_profile.csv",
+        content=(FIXTURE_DIR / "sample_profile.csv").read_bytes(),
+        file_type="csv",
+    )
+    dataframe, read_time_ms, warnings = read_uploaded_file(uploaded_file)
+
+    profile = build_profile_view_model(
+        uploaded_file=uploaded_file,
+        dataframe=dataframe,
+        read_time_ms=read_time_ms,
+        warnings=warnings,
+        upload_token="token",
+        sample_seed=42,
+    )
+
+    assert len(profile["sample_rows"]) == 3
+    assert len(profile["head_rows"]) == 2
+    assert len(profile["tail_rows"]) == 2
+    assert all(len(column["sample_values"]) <= 1 for column in profile["columns"])
+    assert any("…" in row["notes"] for row in profile["sample_rows"])
+
+
 def test_read_uploaded_parquet(tmp_path):
     dataframe = pl.read_csv(FIXTURE_DIR / "sample_profile.csv")
     parquet_path = tmp_path / "sample_profile.parquet"
@@ -158,12 +186,13 @@ def test_extracts_filename_from_string_multipart_body():
 
 
 def test_rejects_oversized_upload(monkeypatch):
-    monkeypatch.setattr(file_reader, "MAX_UPLOAD_BYTES", 10)
+    monkeypatch.setenv("DATAPEEK_MAX_UPLOAD_MB", "1")
+    oversized_csv = b"id,name\n" + (b"1,Alice\n" * 150000)
 
     try:
-        UploadedFile.from_request_files({"dataset": b"id,name\n1,Alice\n"}, preferred_filename="customers.csv")
+        UploadedFile.from_request_files({"dataset": oversized_csv}, preferred_filename="customers.csv")
     except FileValidationError as exc:
-        assert "currently supports files up to" in str(exc)
+        assert "currently supports files up to 1 MB" in str(exc)
     else:
         raise AssertionError("Expected oversized upload to be rejected")
 

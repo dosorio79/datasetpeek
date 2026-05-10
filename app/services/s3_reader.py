@@ -11,9 +11,10 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 
+from app.services.settings import get_settings
+
 
 _S3_BUCKET_NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$")
-S3_DOWNLOAD_TIMEOUT_SECONDS = 30
 
 
 class S3ReadError(ValueError):
@@ -30,6 +31,7 @@ class S3ClientConfig:
     secret_access_key: str | None
     session_token: str | None
     force_path_style: bool
+    download_timeout_seconds: int
 
     @property
     def has_credentials(self) -> bool:
@@ -78,6 +80,7 @@ def download_s3_object(
 
 
 def s3_client_config_from_env(environ: Mapping[str, str]) -> S3ClientConfig:
+    settings = get_settings(environ)
     endpoint_url = _first_env(environ, "DATAPEEK_S3_ENDPOINT_URL", "AWS_ENDPOINT_URL_S3", "AWS_S3_ENDPOINT_URL")
     access_key_id = _first_env(environ, "DATAPEEK_S3_ACCESS_KEY_ID", "AWS_ACCESS_KEY_ID")
     secret_access_key = _first_env(environ, "DATAPEEK_S3_SECRET_ACCESS_KEY", "AWS_SECRET_ACCESS_KEY")
@@ -91,6 +94,7 @@ def s3_client_config_from_env(environ: Mapping[str, str]) -> S3ClientConfig:
         secret_access_key=secret_access_key,
         session_token=session_token,
         force_path_style=force_path_style,
+        download_timeout_seconds=settings.s3_download_timeout_seconds,
     )
 
 
@@ -111,7 +115,7 @@ def read_s3_url(*, url: str, config: S3ClientConfig, max_bytes: int) -> bytes:
         headers.update(s3_sigv4_headers(url=url, config=config))
 
     request = Request(url, headers=headers)
-    with urlopen(request, timeout=S3_DOWNLOAD_TIMEOUT_SECONDS) as response:
+    with urlopen(request, timeout=config.download_timeout_seconds) as response:
         content_length = response.headers.get("Content-Length")
         if content_length and int(content_length) > max_bytes:
             raise S3ReadError(_oversized_message(max_bytes))

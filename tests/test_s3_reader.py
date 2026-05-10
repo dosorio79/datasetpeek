@@ -38,6 +38,12 @@ def test_builds_minio_path_style_url_from_endpoint_config():
     )
 
 
+def test_s3_config_uses_download_timeout_setting():
+    config = s3_reader.s3_client_config_from_env({"DATAPEEK_S3_DOWNLOAD_TIMEOUT_SECONDS": "9"})
+
+    assert config.download_timeout_seconds == 9
+
+
 def test_builds_signed_s3_headers_from_credentials():
     config = s3_reader.s3_client_config_from_env(
         {

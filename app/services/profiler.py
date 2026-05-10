@@ -6,13 +6,16 @@ import polars as pl
 
 from app.services.file_reader import UploadedFile
 from app.services.heuristics import detect_column_signals
+from app.services.settings import AppSettings, get_settings
 
 
 def empty_view_model(*, error_message: str | None = None) -> dict[str, Any]:
     """Return the template context for the upload-first empty state."""
 
+    settings = get_settings()
     return {
         "page_title": "DataPeek",
+        "settings": settings,
         "error_message": error_message,
         "file_summary": None,
         "warnings": [],
@@ -46,6 +49,7 @@ def build_profile_view_model(
 
     row_count = dataframe.height
     column_count = dataframe.width
+    settings = get_settings()
     column_metrics, numeric_metrics = _collect_lazy_metrics(dataframe)
     columns: list[dict[str, Any]] = []
     signals: list[dict[str, str]] = []
@@ -55,7 +59,7 @@ def build_profile_view_model(
         metrics = column_metrics[series.name]
         unique_count = metrics["unique_count"]
         missing_count = metrics["missing_count"]
-        sample_values = _sample_values(series)
+        sample_values = _sample_values(series, settings=settings)
         columns.append(
             {
                 "name": series.name,
@@ -81,9 +85,10 @@ def build_profile_view_model(
         if stats is not None:
             numeric_columns.append({"name": series.name, **stats})
 
-    sample_frame = _sample_frame(dataframe, sample_seed)
+    sample_frame = _sample_frame(dataframe, sample_seed, settings=settings)
     return {
         "page_title": "DataPeek",
+        "settings": settings,
         "error_message": None,
         "file_summary": {
             "filename": uploaded_file.filename,
@@ -92,25 +97,25 @@ def build_profile_view_model(
             "columns": column_count,
             "read_time_ms": read_time_ms,
         },
-        "warnings": _size_warning(uploaded_file.content) + warnings,
+        "warnings": _size_warning(uploaded_file.content, settings=settings) + warnings,
         "signals": signals,
         "columns": columns,
         "numeric_columns": numeric_columns,
-        "sample_rows": _table_rows(sample_frame),
+        "sample_rows": _table_rows(sample_frame, settings=settings),
         "sample_columns": sample_frame.columns,
-        "head_rows": _table_rows(dataframe.head(5)),
-        "tail_rows": _table_rows(dataframe.tail(5)),
+        "head_rows": _table_rows(dataframe.head(settings.head_tail_rows), settings=settings),
+        "tail_rows": _table_rows(dataframe.tail(settings.head_tail_rows), settings=settings),
         "upload_token": upload_token,
         "next_resample_seed": sample_seed + 1,
         "has_result": True,
     }
 
 
-def _sample_values(series: pl.Series) -> list[str]:
+def _sample_values(series: pl.Series, *, settings: AppSettings) -> list[str]:
     """Return a tiny representative value set for the column overview table."""
 
-    values = series.drop_nulls().unique(maintain_order=True).head(3).to_list()
-    return [_truncate(_format_value(value)) for value in values]
+    values = series.drop_nulls().unique(maintain_order=True).head(settings.sample_value_count).to_list()
+    return [_truncate(_format_value(value), settings=settings) for value in values]
 
 
 def _collect_lazy_metrics(dataframe: pl.DataFrame) -> tuple[dict[str, dict[str, int]], dict[str, dict[str, str]]]:
@@ -160,20 +165,20 @@ def _collect_lazy_metrics(dataframe: pl.DataFrame) -> tuple[dict[str, dict[str, 
     return column_metrics, numeric_metrics
 
 
-def _sample_frame(dataframe: pl.DataFrame, sample_seed: int) -> pl.DataFrame:
-    """Return the preview sample, capped at ten rows."""
+def _sample_frame(dataframe: pl.DataFrame, sample_seed: int, *, settings: AppSettings) -> pl.DataFrame:
+    """Return the preview sample, capped by runtime settings."""
 
-    if dataframe.height <= 10:
+    if dataframe.height <= settings.random_sample_rows:
         return dataframe
-    return dataframe.sample(n=10, shuffle=True, seed=sample_seed)
+    return dataframe.sample(n=settings.random_sample_rows, shuffle=True, seed=sample_seed)
 
 
-def _table_rows(dataframe: pl.DataFrame) -> list[dict[str, str]]:
+def _table_rows(dataframe: pl.DataFrame, *, settings: AppSettings) -> list[dict[str, str]]:
     """Format a Polars frame for compact HTML table rendering."""
 
     rows: list[dict[str, str]] = []
     for row in dataframe.iter_rows(named=True):
-        rows.append({column: _truncate(_format_value(value)) for column, value in row.items()})
+        rows.append({column: _truncate(_format_value(value), settings=settings) for column, value in row.items()})
     return rows
 
 
@@ -191,14 +196,18 @@ def _format_value(value: Any) -> str:
     return str(value)
 
 
-def _truncate(value: str, max_length: int = 50) -> str:
+def _truncate(value: str, *, settings: AppSettings) -> str:
+    max_length = settings.text_truncate_chars
     if len(value) <= max_length:
         return value
     return f"{value[: max_length - 1]}…"
 
 
-def _size_warning(content: bytes) -> list[str]:
-    size_mb = len(content) / (1024 * 1024)
-    if size_mb <= 50:
+def _size_warning(content: bytes, *, settings: AppSettings) -> list[str]:
+    if len(content) <= settings.large_file_warning_bytes:
         return []
-    return [f"Large file ({size_mb:.1f} MB). DataPeek accepts up to 100 MB, but smaller files profile more reliably."]
+    size_mb = len(content) / (1024 * 1024)
+    return [
+        f"Large file ({size_mb:.1f} MB). DataPeek accepts up to {settings.max_upload_mb} MB, "
+        "but smaller files profile more reliably."
+    ]
