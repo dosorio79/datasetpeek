@@ -5,7 +5,7 @@
 
 [![CI](https://github.com/dosorio79/datapeek/actions/workflows/ci.yml/badge.svg)](https://github.com/dosorio79/datapeek/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.2.0-informational)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.0-informational)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/python-3.12+-blue)](https://www.python.org/)
 
 Fast, minimal profiler for CSV and Parquet files.
@@ -40,22 +40,25 @@ The launcher also respects `PORT` and `HOST`, which is useful for managed platfo
 PORT=9090 HOST=0.0.0.0 uv run python main.py
 ```
 
-DataPeek accepts local CSV/Parquet uploads and S3-compatible object URIs:
+DataPeek accepts local CSV/Parquet uploads and S3-compatible object URIs. Use the source switcher on the home page to choose between a local file and an `s3://` object:
 
 ```text
 s3://bucket/path/data.csv
 ```
 
-For private AWS S3 or MinIO-compatible buckets, configure credentials through environment variables:
+For private AWS S3, MinIO, Cloudflare R2, or another S3-compatible object store, configure read-only credentials through environment variables:
 
 ```bash
-DATAPEEK_S3_ENDPOINT_URL=http://localhost:9000  # MinIO/custom S3 only
+DATAPEEK_S3_ENDPOINT_URL=http://localhost:9000  # MinIO/custom S3/R2 endpoint
 DATAPEEK_S3_ACCESS_KEY_ID=minioadmin
 DATAPEEK_S3_SECRET_ACCESS_KEY=minioadmin
 DATAPEEK_S3_REGION=us-east-1
+DATAPEEK_S3_FORCE_PATH_STYLE=true
 ```
 
-If `DATAPEEK_S3_ENDPOINT_URL` is set, DataPeek uses path-style requests such as `http://localhost:9000/bucket/path/data.csv`, which matches MinIO's default setup. Without credentials, DataPeek attempts anonymous reads.
+If `DATAPEEK_S3_ENDPOINT_URL` is set, DataPeek uses path-style requests such as `http://localhost:9000/bucket/path/data.csv`, which matches MinIO's default setup and many S3-compatible providers. Without credentials, DataPeek attempts anonymous reads, but public S3 bucket behavior is provider- and policy-dependent.
+
+DataPeek profiles the full uploaded file or S3 object when it is within the size limit. If the object is an exported sample from a larger dataset, the reported rows, signals, and summaries describe that sample.
 
 ## Test
 
@@ -125,3 +128,4 @@ Operational assumptions for this deployment:
 - Render free web services spin down after 15 minutes of inactivity, so the first request after idle can take about a minute to recover.
 - Free web services do not support persistent disks or scaling beyond a single instance.
 - Keep uploads modest in size. The app warns above 50 MB and rejects uploads above 100 MB.
+- Configure S3-compatible credentials in Render environment variables; Render does not read your local `.env` file.

@@ -232,6 +232,8 @@ def test_routes_render_profile_and_resample():
     )
 
     assert analyze_response.status_code == 200
+    assert "<span>Rows</span>" in analyze_response.text
+    assert "profiles the full uploaded file or S3 object" in analyze_response.text
     assert "Sample rows (random)" in analyze_response.text
     assert "Column Overview" in analyze_response.text
     assert "Signals / Warnings" in analyze_response.text
@@ -276,6 +278,16 @@ def test_home_renders_help_menu():
     response = client.get("/")
 
     assert response.status_code == 200
+    assert "Analyze dataset" in response.text
+    assert "Choose a local CSV/Parquet file or a configured S3-compatible object." in response.text
+    assert 'name="source_mode" value="file" checked' in response.text
+    assert 'name="source_mode" value="s3"' in response.text
+    assert 'data-source-panel="file"' in response.text
+    assert 'data-source-panel="s3"' in response.text
+    assert "Local file" in response.text
+    assert "S3 / MinIO URI" in response.text
+    assert "Uses the server-configured object storage credentials." in response.text
+    assert "row count" in response.text
     assert "S3-compatible URI" in response.text
     assert "DATAPEEK_S3_ENDPOINT_URL" in response.text
     assert 'id="analyze-submit"' in response.text

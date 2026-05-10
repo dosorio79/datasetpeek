@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project uses semantic versioning tags.
 
+## [0.3.0] - 2026-05-10
+
+### Added
+- Dataset source switcher that separates local file uploads from S3/MinIO URI analysis.
+- Clear source-picker copy for configured S3-compatible object stores such as MinIO, Cloudflare R2, and private S3.
+- User-facing note that DataPeek profiles the full accepted file/object, while externally exported samples remain sample-level inputs.
+
+### Changed
+- Refined the opening upload layout into a compact `Analyze dataset` source picker.
+- Improved S3 download errors for access denied, missing objects, and generic HTTP failures.
+- README now documents the source switcher, Render environment variables for S3-compatible credentials, path-style endpoint behavior, and public-bucket caveats.
+
 ## [0.2.0] - 2026-05-05
 
 ### Added

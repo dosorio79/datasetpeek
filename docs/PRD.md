@@ -7,7 +7,7 @@
 
 **Name:** DataPeek  
 **Type:** Single-page web app  
-**Current version:** 0.1.2  
+**Current version:** 0.3.0  
 
 **Goal:**
 > Understand a dataset in seconds.
@@ -22,21 +22,23 @@
 
 ## 2. Version Roadmap
 
-### 0.1.2 — Current Version
+### 0.3.0 — Current Version
 
-MVP first-contact profiler for CSV and Parquet files, with upload hardening.
+MVP first-contact profiler for local CSV/Parquet files and configured S3-compatible objects, with upload hardening.
 
 Focus:
 - upload CSV or Parquet
+- analyze configured S3-compatible CSV or Parquet objects
 - return a fast single-page profile
 - surface high-signal column warnings
 - show schema, missingness, uniqueness, numeric summaries, and sample rows
 - reject uploads above 100 MB before parsing or caching
+- clarify that results cover the full accepted file/object, or the exported sample if the object itself is a sample
 - avoid charts, correlations, dashboards, and exploratory workflows
 
 ---
 
-### 0.2.0 — Next Product Evolution
+### 0.4.0 — Next Product Evolution
 
 The next version should make DataPeek a stronger dataset triage assistant while preserving its first-contact scope.
 
