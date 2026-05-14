@@ -7,11 +7,9 @@ from robyn.templating import JinjaTemplate
 
 from app.routes.home import register_home_routes
 from app.routes.profile import register_profile_routes
-from app.services.session_store import InMemoryUploadStore
 
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES = JinjaTemplate(str(BASE_DIR / "templates"))
-UPLOAD_STORE = InMemoryUploadStore()
 LOGO_PATH = BASE_DIR / "img" / "datasetpeek-logo.png"
 FAVICON_ICO_PATH = BASE_DIR / "static" / "favicon.ico"
 FAVICON_PNG_PATH = BASE_DIR / "static" / "favicon-32.png"
@@ -25,7 +23,7 @@ def create_app() -> Robyn:
     app = Robyn(__file__)
 
     register_home_routes(app=app, templates=TEMPLATES)
-    register_profile_routes(app=app, templates=TEMPLATES, upload_store=UPLOAD_STORE)
+    register_profile_routes(app=app, templates=TEMPLATES)
 
     @app.get("/health")
     def health():

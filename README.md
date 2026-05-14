@@ -81,7 +81,7 @@ make check
 app/
   main.py              Robyn app setup and route registration
   routes/              HTTP handlers
-  services/            File loading, profiling, heuristics, in-memory resample store
+  services/            File loading, profiling, heuristics, and view-model assembly
   templates/           Jinja templates
   static/              CSS and browser assets
 app/img/               Logo and icon source assets
@@ -123,8 +123,8 @@ See [docs/branch-protection-plan.md](docs/branch-protection-plan.md) for the pol
 
 Operational assumptions for this deployment:
 
-- Uploads and resample tokens are stored in process memory only.
-- Restart, redeploy, crash, or free-tier spin-down clears uploaded file state.
+- Uploads are processed in-request; preview sample sets are embedded in the rendered response.
+- Restart, redeploy, crash, or free-tier spin-down clears any in-flight request state.
 - The service should stay at a single instance unless upload state is moved out of memory.
 - Render free web services spin down after 15 minutes of inactivity, so the first request after idle can take about a minute to recover.
 - Free web services do not support persistent disks or scaling beyond a single instance.
