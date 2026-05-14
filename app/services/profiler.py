@@ -23,11 +23,10 @@ def empty_view_model(*, error_message: str | None = None) -> dict[str, Any]:
         "columns": [],
         "numeric_columns": [],
         "sample_rows": [],
+        "sample_sets": [],
         "sample_columns": [],
         "head_rows": [],
         "tail_rows": [],
-        "upload_token": "",
-        "next_resample_seed": 43,
         "has_result": False,
     }
 
@@ -38,8 +37,6 @@ def build_profile_view_model(
     dataframe: pl.DataFrame,
     read_time_ms: int,
     warnings: list[str],
-    upload_token: str,
-    sample_seed: int,
 ) -> dict[str, Any]:
     """Build the single-page profile context from a loaded dataset.
 
@@ -85,7 +82,8 @@ def build_profile_view_model(
         if stats is not None:
             numeric_columns.append({"name": series.name, **stats})
 
-    sample_frame = _sample_frame(dataframe, sample_seed, settings=settings)
+    sample_sets = _sample_sets(dataframe, settings=settings)
+    sample_frame = sample_sets[0]["frame"] if sample_sets else dataframe.head(settings.random_sample_rows)
     return {
         "page_title": "DatasetPeek",
         "settings": settings,
@@ -102,11 +100,16 @@ def build_profile_view_model(
         "columns": columns,
         "numeric_columns": numeric_columns,
         "sample_rows": _table_rows(sample_frame, settings=settings),
+        "sample_sets": [
+            {
+                "label": sample["label"],
+                "rows": _table_rows(sample["frame"], settings=settings),
+            }
+            for sample in sample_sets
+        ],
         "sample_columns": sample_frame.columns,
         "head_rows": _table_rows(dataframe.head(settings.head_tail_rows), settings=settings),
         "tail_rows": _table_rows(dataframe.tail(settings.head_tail_rows), settings=settings),
-        "upload_token": upload_token,
-        "next_resample_seed": sample_seed + 1,
         "has_result": True,
     }
 
@@ -165,12 +168,20 @@ def _collect_lazy_metrics(dataframe: pl.DataFrame) -> tuple[dict[str, dict[str, 
     return column_metrics, numeric_metrics
 
 
-def _sample_frame(dataframe: pl.DataFrame, sample_seed: int, *, settings: AppSettings) -> pl.DataFrame:
-    """Return the preview sample, capped by runtime settings."""
+def _sample_sets(dataframe: pl.DataFrame, *, settings: AppSettings) -> list[dict[str, Any]]:
+    """Return a small finite set of preview samples for client-side cycling."""
 
     if dataframe.height <= settings.random_sample_rows:
-        return dataframe
-    return dataframe.sample(n=settings.random_sample_rows, shuffle=True, seed=sample_seed)
+        return [{"label": "Full preview", "frame": dataframe}]
+
+    seeds = (42, 43, 44, 45)
+    return [
+        {
+            "label": f"Sample {index}",
+            "frame": dataframe.sample(n=settings.random_sample_rows, shuffle=True, seed=seed),
+        }
+        for index, seed in enumerate(seeds, start=1)
+    ]
 
 
 def _table_rows(dataframe: pl.DataFrame, *, settings: AppSettings) -> list[dict[str, str]]:

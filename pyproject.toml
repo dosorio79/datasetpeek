@@ -1,6 +1,6 @@
 [project]
 name = "datasetpeek"
-version = "0.3.1"
+version = "0.3.2"
 description = "Fast, minimal profiler for CSV and Parquet files"
 readme = "README.md"
 requires-python = ">=3.12"

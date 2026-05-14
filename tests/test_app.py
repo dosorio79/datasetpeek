@@ -6,7 +6,6 @@ from types import SimpleNamespace
 import polars as pl
 from robyn.testing import TestClient as RobynClient
 
-import app.routes.profile as profile_routes
 import app.services.file_reader as file_reader
 from main import parse_runtime_config
 from app.main import create_app
@@ -30,8 +29,6 @@ def test_read_uploaded_csv_and_detect_signals():
         dataframe=dataframe,
         read_time_ms=read_time_ms,
         warnings=warnings,
-        upload_token="token",
-        sample_seed=42,
     )
 
     signal_kinds = {(signal["column"], signal["kind"]) for signal in profile["signals"]}
@@ -72,8 +69,6 @@ def test_profile_uses_operational_display_settings(monkeypatch):
         dataframe=dataframe,
         read_time_ms=read_time_ms,
         warnings=warnings,
-        upload_token="token",
-        sample_seed=42,
     )
 
     assert len(profile["sample_rows"]) == 3
@@ -251,7 +246,7 @@ def test_rejects_unsupported_s3_object_type(monkeypatch):
         raise AssertionError("Expected unsupported S3 object to be rejected")
 
 
-def test_routes_render_profile_and_resample():
+def test_routes_render_profile_and_sample_sets():
     client = RobynClient(create_app())
     csv_bytes = (FIXTURE_DIR / "sample_profile.csv").read_bytes()
 
@@ -264,20 +259,11 @@ def test_routes_render_profile_and_resample():
     assert "<span>Rows</span>" in analyze_response.text
     assert "profiles the full uploaded file or S3 object" in analyze_response.text
     assert "Sample rows (random)" in analyze_response.text
+    assert "Next sample" in analyze_response.text
+    assert "Sample 1" in analyze_response.text
     assert "Column Overview" in analyze_response.text
     assert "Signals / Warnings" in analyze_response.text
     assert "Boolean disguised as string" in analyze_response.text
-
-    token = _extract_hidden_value(analyze_response.text, "upload_token")
-    next_seed = _extract_hidden_value(analyze_response.text, "resample_seed")
-
-    resample_response = client.post(
-        "/resample",
-        form_data={"upload_token": token, "resample_seed": next_seed},
-    )
-
-    assert resample_response.status_code == 200
-    assert "Sample rows (random)" in resample_response.text
 
 
 def test_route_analyzes_s3_uri(monkeypatch):
@@ -322,29 +308,6 @@ def test_home_renders_help_menu():
     assert 'id="analyze-submit"' in response.text
 
 
-def test_resample_renders_validation_errors(monkeypatch):
-    client = RobynClient(create_app())
-    csv_bytes = (FIXTURE_DIR / "sample_profile.csv").read_bytes()
-    analyze_response = client.post(
-        "/analyze",
-        files={"dataset": {"filename": "sample_profile.csv", "content": csv_bytes}},
-    )
-    token = _extract_hidden_value(analyze_response.text, "upload_token")
-
-    def fail_read(*args, **kwargs):
-        raise FileValidationError("Could not parse cached upload.")
-
-    monkeypatch.setattr(profile_routes, "read_uploaded_file", fail_read)
-
-    resample_response = client.post(
-        "/resample",
-        form_data={"upload_token": token, "resample_seed": "43"},
-    )
-
-    assert resample_response.status_code == 200
-    assert "Could not parse cached upload." in resample_response.text
-
-
 def test_health_endpoint_returns_ok():
     client = RobynClient(create_app())
 
@@ -375,13 +338,6 @@ def test_runtime_config_allows_cli_overrides():
 
     assert host == "127.0.0.1"
     assert port == 7001
-
-
-def _extract_hidden_value(html: str, field_name: str) -> str:
-    marker = f'name="{field_name}" value="'
-    start = html.index(marker) + len(marker)
-    end = html.index('"', start)
-    return html[start:end]
 
 
 def test_numeric_discrete_encoding_signal():

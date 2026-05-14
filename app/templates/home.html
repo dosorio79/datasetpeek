@@ -7,7 +7,10 @@
 
   <section class="panel source-picker">
     <div class="source-picker-heading">
-      <h2>Analyze dataset</h2>
+      <div class="heading-row">
+        <h2>Analyze dataset</h2>
+        <span class="heading-accent">Fast first-pass dataset triage</span>
+      </div>
       <p>Choose a local CSV/Parquet file or a configured S3-compatible object.</p>
     </div>
     <form action="/analyze" method="post" enctype="multipart/form-data" class="upload-form" id="upload-form">
@@ -15,30 +18,50 @@
         <legend class="label">Dataset source</legend>
         <label class="source-option">
           <input type="radio" name="source_mode" value="file" checked>
-          <span>Local file</span>
+          <span><strong>Local file</strong><small>Upload CSV or Parquet</small></span>
         </label>
         <label class="source-option">
           <input type="radio" name="source_mode" value="s3">
-          <span>S3 / MinIO URI</span>
+          <span><strong>S3 / MinIO URI</strong><small>Use configured storage access</small></span>
         </label>
       </fieldset>
 
       <div class="source-body">
-        <div class="upload-source upload-source-file" data-source-panel="file">
-          <div class="field-heading">
+        <div class="upload-source upload-source-file" data-source-panel="file" id="drop-zone" tabindex="0" aria-describedby="source-summary upload-hint">
+          <div class="field-heading field-heading-file">
             <label for="dataset" class="label">Local file</label>
-            <p class="input-help" id="source-summary">No file selected.</p>
+            <p class="input-help" id="source-summary">Drop a CSV or Parquet file here, or choose a file.</p>
+            <div class="file-meta" id="file-meta" hidden>
+              <span class="file-chip" id="file-type">File</span>
+              <span class="file-chip" id="file-size">0 KB</span>
+            </div>
+            <p class="upload-hint" id="upload-hint">Accepted: .csv and .parquet</p>
           </div>
-          <input id="dataset" name="dataset" type="file" accept=".csv,.parquet" class="sr-only">
-          <input id="dataset-name" name="dataset_name" type="hidden">
-          <button type="button" class="secondary-button" id="upload-trigger">Choose file</button>
+          <div class="upload-actions">
+            <input id="dataset" name="dataset" type="file" accept=".csv,.parquet" class="sr-only">
+            <input id="dataset-name" name="dataset_name" type="hidden">
+            <button type="button" class="secondary-button" id="upload-trigger">Choose file</button>
+            <div class="submit-stack">
+              <button type="submit" id="analyze-submit">
+                <span class="button-spinner" aria-hidden="true"></span>
+                <span class="button-label">Analyze</span>
+              </button>
+              <p class="submit-status" id="submit-status" aria-live="polite" hidden>Ready to profile the dataset.</p>
+            </div>
+          </div>
         </div>
         <div class="upload-source upload-source-s3" data-source-panel="s3">
           <label for="s3-uri" class="label">S3 / MinIO URI</label>
           <input id="s3-uri" name="s3_uri" type="text" inputmode="url" placeholder="s3://bucket/path/data.csv">
           <p class="input-help">Uses the server-configured object storage credentials.</p>
+          <div class="submit-stack submit-stack-inline">
+            <button type="submit" id="analyze-submit-s3">
+              <span class="button-spinner" aria-hidden="true"></span>
+              <span class="button-label">Analyze</span>
+            </button>
+            <p class="submit-status" id="submit-status-s3" aria-live="polite" hidden>Ready to profile the dataset.</p>
+          </div>
         </div>
-        <button type="submit" id="analyze-submit">Analyze</button>
       </div>
     </form>
     {% if error_message %}
@@ -50,6 +73,7 @@
   </section>
 
   {% if has_result %}
+    <div class="results-stack">
     <section class="grid summary-grid">
       <article class="panel stat"><span>Filename</span><strong class="stat-value filename-value" title="{{ file_summary.filename }}">{{ file_summary.filename }}</strong></article>
       <article class="panel stat"><span>Type</span><strong>{{ file_summary.file_type }}</strong></article>
@@ -155,15 +179,16 @@
 
     <section class="panel">
       <div class="section-heading">
-        <h2>Sample rows (random)</h2>
-        <form action="/resample" method="post">
-          <input type="hidden" name="upload_token" value="{{ upload_token }}">
-          <input type="hidden" name="resample_seed" value="{{ next_resample_seed }}">
-          <button type="submit">Resample</button>
-        </form>
+        <div class="sample-heading">
+          <h2>Sample rows (random)</h2>
+          <p class="input-help" id="sample-set-label">{{ sample_sets[0].label if sample_sets else "Sample 1" }}</p>
+        </div>
+        {% if sample_sets|length > 1 %}
+          <button type="button" class="secondary-button" id="next-sample">Next sample</button>
+        {% endif %}
       </div>
       <div class="table-wrap">
-        <table>
+        <table id="sample-table">
           <thead>
             <tr>
               {% for column in sample_columns %}
@@ -231,6 +256,7 @@
         </table>
       </div>
     </details>
+    </div>
   {% else %}
     <section class="panel empty-state">
       <h2>Output</h2>
@@ -257,21 +283,118 @@
 
   <script>
     (() => {
+      const sampleSets = {{ sample_sets | tojson if sample_sets else '[]' }};
       const form = document.getElementById("upload-form");
       const fileInput = document.getElementById("dataset");
       const filenameInput = document.getElementById("dataset-name");
       const s3Input = document.getElementById("s3-uri");
       const sourceSummary = document.getElementById("source-summary");
+      const fileMeta = document.getElementById("file-meta");
+      const fileType = document.getElementById("file-type");
+      const fileSize = document.getElementById("file-size");
       const analyzeSubmit = document.getElementById("analyze-submit");
+      const analyzeSubmitS3 = document.getElementById("analyze-submit-s3");
+      const submitButtons = [analyzeSubmit, analyzeSubmitS3].filter(Boolean);
+      const submitStatuses = [
+        document.getElementById("submit-status"),
+        document.getElementById("submit-status-s3"),
+      ].filter(Boolean);
+      const analyzeLabels = submitButtons.map((button) => button?.querySelector(".button-label")).filter(Boolean);
       const trigger = document.getElementById("upload-trigger");
+      const dropZone = document.getElementById("drop-zone");
+      const uploadActions = dropZone?.querySelector(".upload-actions");
       const modeInputs = [...document.querySelectorAll('input[name="source_mode"]')];
       const sourcePanels = [...document.querySelectorAll("[data-source-panel]")];
+      const sampleLabel = document.getElementById("sample-set-label");
+      const nextSample = document.getElementById("next-sample");
+      const sampleTable = document.getElementById("sample-table");
+      const sampleTableBody = sampleTable?.querySelector("tbody");
+      const sampleTableHead = sampleTable?.querySelector("thead tr");
 
-      if (!form || !fileInput || !filenameInput || !s3Input || !sourceSummary || !analyzeSubmit || !trigger || modeInputs.length === 0 || sourcePanels.length === 0) {
+      if (!form || !fileInput || !filenameInput || !s3Input || !sourceSummary || !fileMeta || !fileType || !fileSize || submitButtons.length === 0 || analyzeLabels.length === 0 || !trigger || !dropZone || !uploadActions || modeInputs.length === 0 || sourcePanels.length === 0) {
         return;
       }
 
       const activeMode = () => modeInputs.find((input) => input.checked)?.value || "file";
+      const formatBytes = (bytes) => {
+        if (bytes < 1024) {
+          return `${bytes} B`;
+        }
+        if (bytes < 1024 * 1024) {
+          return `${(bytes / 1024).toFixed(1)} KB`;
+        }
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+      };
+      const fileExtension = (fileName) => {
+        const ext = fileName.split(".").pop();
+        return ext ? ext.toUpperCase() : "File";
+      };
+      const updateFileState = (file) => {
+        if (file) {
+          sourceSummary.textContent = file.name;
+          fileType.textContent = fileExtension(file.name);
+          fileSize.textContent = formatBytes(file.size);
+          fileMeta.hidden = false;
+          dropZone.dataset.hasFile = "true";
+          return;
+        }
+        sourceSummary.textContent = "Drop a CSV or Parquet file here, or choose a file.";
+        fileMeta.hidden = true;
+        dropZone.dataset.hasFile = "false";
+      };
+      const syncLoadingState = (isLoading) => {
+        form.dataset.loading = isLoading ? "true" : "false";
+        const [file] = fileInput.files || [];
+        const s3Uri = s3Input.value.trim();
+        submitButtons.forEach((button) => {
+          button.disabled = isLoading || (activeMode() === "file" ? !file : !s3Uri);
+        });
+        analyzeLabels.forEach((label) => {
+          label.textContent = isLoading ? "Analyzing..." : "Analyze";
+        });
+        submitStatuses.forEach((status) => {
+          status.hidden = !isLoading;
+          if (isLoading) {
+            status.textContent = activeMode() === "file" ? "Reading file and profiling columns..." : "Resolving object and profiling columns...";
+          }
+        });
+        trigger.disabled = isLoading;
+        s3Input.disabled = isLoading;
+        modeInputs.forEach((input) => {
+          input.disabled = isLoading;
+        });
+        dropZone.setAttribute("aria-disabled", isLoading ? "true" : "false");
+      };
+      const assignFiles = (files) => {
+        if (!files || files.length === 0) {
+          return;
+        }
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(files[0]);
+        fileInput.files = dataTransfer.files;
+        filenameInput.value = files[0].name;
+        modeInputs.forEach((input) => {
+          input.checked = input.value === "file";
+        });
+        s3Input.value = "";
+        syncSubmit();
+      };
+      let sampleIndex = 0;
+      const renderSampleTable = () => {
+        if (!sampleSets.length || !sampleLabel || !sampleTableBody || !sampleTableHead) {
+          return;
+        }
+        const activeSet = sampleSets[sampleIndex];
+        sampleLabel.textContent = activeSet.label;
+        const columns = Object.keys(activeSet.rows[0] || {});
+        if (!columns.length) {
+          return;
+        }
+        sampleTableHead.innerHTML = columns.map((column) => `<th>${column}</th>`).join("");
+        sampleTableBody.innerHTML = activeSet.rows
+          .map((row) => `<tr>${columns.map((column) => `<td>${row[column] ?? ""}</td>`).join("")}</tr>`)
+          .join("");
+      };
 
       const syncSubmit = () => {
         const [file] = fileInput.files || [];
@@ -280,12 +403,15 @@
         sourcePanels.forEach((panel) => {
           panel.hidden = panel.dataset.sourcePanel !== mode;
         });
-        analyzeSubmit.disabled = mode === "file" ? !file : !s3Uri;
-        if (file) {
-          sourceSummary.textContent = file.name;
-        } else {
-          sourceSummary.textContent = "No file selected.";
-        }
+        dropZone.classList.toggle("is-drop-active", mode === "file");
+        submitButtons.forEach((button) => {
+          button.disabled = mode === "file" ? !file : !s3Uri;
+        });
+        updateFileState(file);
+        submitStatuses.forEach((status) => {
+          status.hidden = true;
+          status.textContent = "Ready to profile the dataset.";
+        });
       };
 
       syncSubmit();
@@ -301,6 +427,24 @@
         });
       });
       trigger.addEventListener("click", () => fileInput.click());
+      dropZone.addEventListener("click", (event) => {
+        if (form.dataset.loading === "true") {
+          return;
+        }
+        if (uploadActions.contains(event.target)) {
+          return;
+        }
+        fileInput.click();
+      });
+      dropZone.addEventListener("keydown", (event) => {
+        if (form.dataset.loading === "true") {
+          return;
+        }
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          fileInput.click();
+        }
+      });
       s3Input.addEventListener("input", () => {
         if (s3Input.value.trim()) {
           modeInputs.forEach((input) => {
@@ -324,12 +468,49 @@
         s3Input.value = "";
         syncSubmit();
       });
+      ["dragenter", "dragover"].forEach((eventName) => {
+        dropZone.addEventListener(eventName, (event) => {
+          if (form.dataset.loading === "true") {
+            return;
+          }
+          event.preventDefault();
+          modeInputs.forEach((input) => {
+            input.checked = input.value === "file";
+          });
+          dropZone.dataset.dragging = "true";
+          syncSubmit();
+        });
+      });
+      ["dragleave", "dragend", "drop"].forEach((eventName) => {
+        dropZone.addEventListener(eventName, () => {
+          dropZone.dataset.dragging = "false";
+        });
+      });
+      dropZone.addEventListener("drop", (event) => {
+        if (form.dataset.loading === "true") {
+          return;
+        }
+        event.preventDefault();
+        assignFiles(event.dataTransfer?.files);
+      });
       form.addEventListener("submit", (event) => {
         const [file] = fileInput.files || [];
         if ((activeMode() === "file" && !file) || (activeMode() === "s3" && !s3Input.value.trim())) {
           event.preventDefault();
+          submitStatuses.forEach((status) => {
+            status.hidden = false;
+            status.textContent = activeMode() === "file" ? "Choose or drop a file to continue." : "Enter an S3 / MinIO URI to continue.";
+          });
+          return;
         }
+        syncLoadingState(true);
       });
+      if (sampleSets.length && nextSample) {
+        nextSample.addEventListener("click", () => {
+          sampleIndex = (sampleIndex + 1) % sampleSets.length;
+          renderSampleTable();
+        });
+      }
     })();
   </script>
 {% endblock %}
