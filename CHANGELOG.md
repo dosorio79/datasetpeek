@@ -14,7 +14,6 @@ The format is based on Keep a Changelog, and this project uses semantic versioni
 - Strengthened the upload workflow with richer file selection feedback, improved source switch styling, and clearer submit-state hierarchy.
 - Refined the page spacing, summary cards, and results presentation to make the app feel more tool-like and less flat.
 - Added restrained teal highlight accents within the existing DatasetPeek visual style.
-
 ## [0.3.1] - 2026-05-14
 
 ### Added
