@@ -1,1 +1,1 @@
-"""Core services for DataPeek."""
+"""Core services for DatasetPeek."""

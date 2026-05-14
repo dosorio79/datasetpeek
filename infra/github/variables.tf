@@ -7,7 +7,7 @@ variable "github_token" {
 variable "repository" {
   description = "GitHub repository name"
   type        = string
-  default     = "datapeek"
+  default     = "datasetpeek"
 }
 
 variable "owner" {

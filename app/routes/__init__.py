@@ -1,1 +1,1 @@
-"""HTTP routes for the DataPeek app."""
+"""HTTP routes for the DatasetPeek app."""

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: datapeek
+    name: datasetpeek
     runtime: python
     plan: free
     healthCheckPath: /health

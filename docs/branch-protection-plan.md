@@ -1,6 +1,6 @@
 # Branch Protection
 
-Repository: `dosorio79/datapeek`
+Repository: `dosorio79/datasetpeek`
 
 Branch protection is managed with Terraform in [infra/github](../infra/github).
 Do not edit these rules manually in the GitHub UI except for emergency recovery.

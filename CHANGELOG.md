@@ -4,12 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project uses semantic versioning tags.
 
+## [0.3.1] - 2026-05-14
+
+### Added
+- Backward-compatible support for legacy `DATAPEEK_*` environment variables during the DatasetPeek rename transition.
+
+### Changed
+- Renamed the product from DataPeek to DatasetPeek across the app, docs, package metadata, and repository configuration.
+- Renamed the Render Blueprint service and Python package slug to `datasetpeek`.
+- Regenerated the logo assets and updated the UI and README branding to DatasetPeek.
+
 ## [0.3.0] - 2026-05-10
 
 ### Added
 - Dataset source switcher that separates local file uploads from S3/MinIO URI analysis.
 - Clear source-picker copy for configured S3-compatible object stores such as MinIO, Cloudflare R2, and private S3.
-- User-facing note that DataPeek profiles the full accepted file/object, while externally exported samples remain sample-level inputs.
+- User-facing note that DatasetPeek profiles the full accepted file/object, while externally exported samples remain sample-level inputs.
 
 ### Changed
 - Refined the opening upload layout into a compact `Analyze dataset` source picker.
@@ -20,7 +30,7 @@ The format is based on Keep a Changelog, and this project uses semantic versioni
 
 ### Added
 - S3-compatible dataset input for CSV and Parquet objects.
-- MinIO and custom S3 endpoint support through `DATAPEEK_S3_ENDPOINT_URL`.
+- MinIO and custom S3 endpoint support through `DATASETPEEK_S3_ENDPOINT_URL`.
 - Optional SigV4 request signing through S3 credential environment variables.
 - UI input for analyzing `s3://bucket/path/file.csv` and `.parquet` objects.
 - README-based help menu for local, S3, and MinIO usage.
@@ -57,7 +67,7 @@ The format is based on Keep a Changelog, and this project uses semantic versioni
 ## [0.1.0] - 2026-04-15
 
 ### Added
-- Initial DataPeek MVP built with Robyn, Polars, and Jinja2.
+- Initial DatasetPeek MVP built with Robyn, Polars, and Jinja2.
 - CSV and Parquet upload with single-page profiling output.
 - File summary, column overview, numeric summary, random sample, head, and tail views.
 - Column-level signals for possible IDs, missingness, low variance, binary targets, boolean disguised as string, mixed types, and categorical/high-cardinality cues.

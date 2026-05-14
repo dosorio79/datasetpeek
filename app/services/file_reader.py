@@ -10,11 +10,11 @@ from typing import Any
 
 import polars as pl
 
+from app.services.settings import AppSettings, get_settings
 from app.services.s3_reader import S3ReadError, download_s3_object, parse_s3_uri
 
 
 _CSV_DELIMITER_CANDIDATES = (",", ";", "\t")
-MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 
 
 class FileValidationError(ValueError):
@@ -58,7 +58,8 @@ class UploadedFile:
             raise
         if not content:
             raise FileValidationError("Upload a non-empty CSV or Parquet file.")
-        _validate_upload_size(content)
+        settings = get_settings()
+        _validate_upload_size(content, settings=settings)
 
         lowered = filename.lower()
         if lowered.endswith(".csv"):
@@ -90,14 +91,15 @@ class UploadedFile:
         if file_type is None:
             raise FileValidationError("Unsupported S3 object type. Use a CSV or Parquet object.")
 
+        settings = get_settings()
         try:
-            content = download_s3_object(bucket=bucket, key=key, max_bytes=MAX_UPLOAD_BYTES)
+            content = download_s3_object(bucket=bucket, key=key, max_bytes=settings.max_upload_bytes)
         except S3ReadError as exc:
             raise FileValidationError(str(exc)) from exc
 
         if not content:
             raise FileValidationError("S3 object is empty. Use a non-empty CSV or Parquet object.")
-        _validate_upload_size(content)
+        _validate_upload_size(content, settings=settings)
 
         return cls(filename=s3_uri, content=content, file_type=file_type)
 
@@ -304,7 +306,7 @@ def _extract_upload_from_multipart_request(request: Any) -> UploadedFile | None:
 
         if not payload:
             raise FileValidationError("Upload a non-empty CSV or Parquet file.")
-        _validate_upload_size(payload)
+        _validate_upload_size(payload, settings=get_settings())
 
         return UploadedFile(filename=filename, content=payload, file_type=file_type)
 
@@ -347,14 +349,14 @@ def _infer_file_type(content: bytes) -> str | None:
     return "csv" if dataframe.width >= 1 else None
 
 
-def _validate_upload_size(content: bytes) -> None:
-    if len(content) > MAX_UPLOAD_BYTES:
-        _raise_oversized_upload()
+def _validate_upload_size(content: bytes, *, settings: AppSettings) -> None:
+    if len(content) > settings.max_upload_bytes:
+        _raise_oversized_upload(settings=settings)
 
 
-def _raise_oversized_upload() -> None:
-    max_mb = MAX_UPLOAD_BYTES // (1024 * 1024)
-    raise FileValidationError(f"Upload is too large. DataPeek currently supports files up to {max_mb} MB.")
+def _raise_oversized_upload(*, settings: AppSettings) -> None:
+    max_mb = settings.max_upload_mb
+    raise FileValidationError(f"Upload is too large. DatasetPeek currently supports files up to {max_mb} MB.")
 
 
 def _file_type_from_filename(filename: str) -> str | None:

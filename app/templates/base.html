@@ -4,9 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ page_title }}</title>
-    <link rel="icon" href="/favicon.ico?v=2" sizes="any">
-    <link rel="icon" type="image/png" href="/static/favicon-32.png?v=2">
-    <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=2">
+    <link rel="icon" href="/favicon.ico?v=3" sizes="any">
+    <link rel="icon" type="image/png" href="/static/favicon-32.png?v=3">
+    <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v=3">
     <link rel="stylesheet" href="/static/styles.css">
   </head>
   <body>
@@ -18,12 +18,12 @@
         <code>s3://bucket/path/data.csv</code>
         <p>For MinIO or private S3, configure the server environment:</p>
         <ul>
-          <li><code>DATAPEEK_S3_ENDPOINT_URL</code></li>
-          <li><code>DATAPEEK_S3_ACCESS_KEY_ID</code></li>
-          <li><code>DATAPEEK_S3_SECRET_ACCESS_KEY</code></li>
-          <li><code>DATAPEEK_S3_REGION</code></li>
+          <li><code>DATASETPEEK_S3_ENDPOINT_URL</code></li>
+          <li><code>DATASETPEEK_S3_ACCESS_KEY_ID</code></li>
+          <li><code>DATASETPEEK_S3_SECRET_ACCESS_KEY</code></li>
+          <li><code>DATASETPEEK_S3_REGION</code></li>
         </ul>
-        <p>Uploads and S3 objects are limited to 100 MB.</p>
+        <p>Uploads and S3 objects are limited to {{ settings.max_upload_mb }} MB.</p>
       </div>
     </details>
     <main class="shell">

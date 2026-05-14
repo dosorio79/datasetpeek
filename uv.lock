@@ -12,8 +12,8 @@ wheels = [
 ]
 
 [[package]]
-name = "datapeek"
-version = "0.3.0"
+name = "datasetpeek"
+version = "0.3.1"
 source = { virtual = "." }
 dependencies = [
     { name = "jinja2" },

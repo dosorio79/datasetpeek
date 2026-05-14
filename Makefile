@@ -16,7 +16,7 @@ test:
 
 check:
 	$(PYTEST) -q
-	$(PYTHON) -m py_compile main.py app/main.py app/routes/home.py app/routes/profile.py app/services/file_reader.py app/services/heuristics.py app/services/profiler.py app/services/s3_reader.py app/services/session_store.py
+	$(PYTHON) -m py_compile main.py app/main.py app/routes/home.py app/routes/profile.py app/services/file_reader.py app/services/heuristics.py app/services/profiler.py app/services/s3_reader.py app/services/session_store.py app/services/settings.py
 
 clean:
 	rm -rf .pytest_cache

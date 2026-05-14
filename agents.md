@@ -1,4 +1,4 @@
-# AGENTS.md — DataPeek
+# AGENTS.md — DatasetPeek
 
 This file provides guidance for coding agents (e.g., Codex) working on this repository.
 
@@ -8,7 +8,7 @@ The goal is to keep instructions minimal, explicit, and actionable.
 
 ## Project Overview
 
-DataPeek is a **fast, minimal profiler for CSV and Parquet files**.
+DatasetPeek is a **fast, minimal profiler for CSV and Parquet files**.
 
 Core idea:
 - Upload a file

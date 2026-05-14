@@ -12,14 +12,14 @@ from app.services.session_store import InMemoryUploadStore
 BASE_DIR = Path(__file__).resolve().parent
 TEMPLATES = JinjaTemplate(str(BASE_DIR / "templates"))
 UPLOAD_STORE = InMemoryUploadStore()
-LOGO_PATH = BASE_DIR / "img" / "datapeek-logo.png"
+LOGO_PATH = BASE_DIR / "img" / "datasetpeek-logo.png"
 FAVICON_ICO_PATH = BASE_DIR / "static" / "favicon.ico"
 FAVICON_PNG_PATH = BASE_DIR / "static" / "favicon-32.png"
 APPLE_TOUCH_ICON_PATH = BASE_DIR / "static" / "apple-touch-icon.png"
 
 
 def create_app() -> Robyn:
-    """Create the Robyn app and register DataPeek's small route surface."""
+    """Create the Robyn app and register DatasetPeek's small route surface."""
 
     # Robyn needs the module file path so it can anchor internal configuration.
     app = Robyn(__file__)

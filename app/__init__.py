@@ -1,1 +1,1 @@
-"""DataPeek application package."""
+"""DatasetPeek application package."""

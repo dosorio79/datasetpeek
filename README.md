@@ -1,16 +1,15 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="app/img/datapeek-logo-readme-dark.png">
-  <img src="app/img/datapeek-logo.png" alt="DataPeek logo" width="420">
-</picture>
+<img src="app/img/datasetpeek-icon-source.png" alt="DatasetPeek icon" width="120">
 
-[![CI](https://github.com/dosorio79/datapeek/actions/workflows/ci.yml/badge.svg)](https://github.com/dosorio79/datapeek/actions/workflows/ci.yml)
+# DatasetPeek
+
+[![CI](https://github.com/dosorio79/datasetpeek/actions/workflows/ci.yml/badge.svg)](https://github.com/dosorio79/datasetpeek/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.3.0-informational)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/python-3.12+-blue)](https://www.python.org/)
 
 Fast, minimal profiler for CSV and Parquet files.
 
-DataPeek is a small server-rendered app built with Robyn, Polars, and Jinja2. It gives a technical user a quick first-pass read on a local, S3, or MinIO dataset without turning the UI into a full EDA tool.
+DatasetPeek is a small server-rendered app built with Robyn, Polars, and Jinja2. It gives a technical user a quick first-pass read on a local, S3, or MinIO dataset without turning the UI into a full EDA tool.
 
 ## Setup
 
@@ -40,7 +39,7 @@ The launcher also respects `PORT` and `HOST`, which is useful for managed platfo
 PORT=9090 HOST=0.0.0.0 uv run python main.py
 ```
 
-DataPeek accepts local CSV/Parquet uploads and S3-compatible object URIs. Use the source switcher on the home page to choose between a local file and an `s3://` object:
+DatasetPeek accepts local CSV/Parquet uploads and S3-compatible object URIs. Use the source switcher on the home page to choose between a local file and an `s3://` object:
 
 ```text
 s3://bucket/path/data.csv
@@ -49,16 +48,18 @@ s3://bucket/path/data.csv
 For private AWS S3, MinIO, Cloudflare R2, or another S3-compatible object store, configure read-only credentials through environment variables:
 
 ```bash
-DATAPEEK_S3_ENDPOINT_URL=http://localhost:9000  # MinIO/custom S3/R2 endpoint
-DATAPEEK_S3_ACCESS_KEY_ID=minioadmin
-DATAPEEK_S3_SECRET_ACCESS_KEY=minioadmin
-DATAPEEK_S3_REGION=us-east-1
-DATAPEEK_S3_FORCE_PATH_STYLE=true
+DATASETPEEK_S3_ENDPOINT_URL=http://localhost:9000  # MinIO/custom S3/R2 endpoint
+DATASETPEEK_S3_ACCESS_KEY_ID=minioadmin
+DATASETPEEK_S3_SECRET_ACCESS_KEY=minioadmin
+DATASETPEEK_S3_REGION=us-east-1
+DATASETPEEK_S3_FORCE_PATH_STYLE=true
 ```
 
-If `DATAPEEK_S3_ENDPOINT_URL` is set, DataPeek uses path-style requests such as `http://localhost:9000/bucket/path/data.csv`, which matches MinIO's default setup and many S3-compatible providers. Without credentials, DataPeek attempts anonymous reads, but public S3 bucket behavior is provider- and policy-dependent.
+If `DATASETPEEK_S3_ENDPOINT_URL` is set, DatasetPeek uses path-style requests such as `http://localhost:9000/bucket/path/data.csv`, which matches MinIO's default setup and many S3-compatible providers. Without credentials, DatasetPeek attempts anonymous reads, but public S3 bucket behavior is provider- and policy-dependent.
 
-DataPeek profiles the full uploaded file or S3 object when it is within the size limit. If the object is an exported sample from a larger dataset, the reported rows, signals, and summaries describe that sample.
+DatasetPeek profiles the full uploaded file or S3 object when it is within the size limit. If the object is an exported sample from a larger dataset, the reported rows, signals, and summaries describe that sample.
+
+Legacy `DATAPEEK_*` environment variables are still accepted as fallbacks during the rename.
 
 ## Test
 
@@ -113,7 +114,7 @@ See [docs/branch-protection-plan.md](docs/branch-protection-plan.md) for the pol
 
 ## Render Deployment
 
-`render.yaml` configures DataPeek as a single Render web service on Render's `free` plan.
+`render.yaml` configures DatasetPeek as a single Render web service on Render's `free` plan.
 
 - Health check: `/health`
 - Build command: `pip install uv && uv sync --locked`

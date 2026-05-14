@@ -20,7 +20,7 @@ class StoredUpload:
 class InMemoryUploadStore:
     """Bounded in-process upload cache used by the resample flow.
 
-    DataPeek intentionally avoids persistence. This store exists only so a user
+    DatasetPeek intentionally avoids persistence. This store exists only so a user
     can request a new random sample after profiling the same uploaded file.
     """
 

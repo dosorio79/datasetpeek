@@ -28,8 +28,8 @@ def test_rejects_invalid_s3_bucket_name():
 def test_builds_minio_path_style_url_from_endpoint_config():
     config = s3_reader.s3_client_config_from_env(
         {
-            "DATAPEEK_S3_ENDPOINT_URL": "http://localhost:9000",
-            "DATAPEEK_S3_REGION": "us-east-1",
+            "DATASETPEEK_S3_ENDPOINT_URL": "http://localhost:9000",
+            "DATASETPEEK_S3_REGION": "us-east-1",
         }
     )
 
@@ -38,12 +38,18 @@ def test_builds_minio_path_style_url_from_endpoint_config():
     )
 
 
+def test_s3_config_uses_download_timeout_setting():
+    config = s3_reader.s3_client_config_from_env({"DATASETPEEK_S3_DOWNLOAD_TIMEOUT_SECONDS": "9"})
+
+    assert config.download_timeout_seconds == 9
+
+
 def test_builds_signed_s3_headers_from_credentials():
     config = s3_reader.s3_client_config_from_env(
         {
-            "DATAPEEK_S3_ACCESS_KEY_ID": "minioadmin",
-            "DATAPEEK_S3_SECRET_ACCESS_KEY": "minioadmin",
-            "DATAPEEK_S3_REGION": "us-east-1",
+            "DATASETPEEK_S3_ACCESS_KEY_ID": "minioadmin",
+            "DATASETPEEK_S3_SECRET_ACCESS_KEY": "minioadmin",
+            "DATASETPEEK_S3_REGION": "us-east-1",
         }
     )
 
@@ -81,10 +87,10 @@ def test_downloads_from_minio_style_endpoint_with_signed_request():
             key="folder/data.csv",
             max_bytes=1024,
             environ={
-                "DATAPEEK_S3_ENDPOINT_URL": f"http://127.0.0.1:{server.server_port}",
-                "DATAPEEK_S3_ACCESS_KEY_ID": "minioadmin",
-                "DATAPEEK_S3_SECRET_ACCESS_KEY": "minioadmin",
-                "DATAPEEK_S3_REGION": "us-east-1",
+                "DATASETPEEK_S3_ENDPOINT_URL": f"http://127.0.0.1:{server.server_port}",
+                "DATASETPEEK_S3_ACCESS_KEY_ID": "minioadmin",
+                "DATASETPEEK_S3_SECRET_ACCESS_KEY": "minioadmin",
+                "DATASETPEEK_S3_REGION": "us-east-1",
             },
         )
     finally:
@@ -120,7 +126,13 @@ def test_anonymous_403_explains_public_and_private_access_options(monkeypatch):
         assert "If this object should be public" in message
         assert "bucket policy" in message
         assert "requester-pays" in message
-        assert "DATAPEEK_S3_ACCESS_KEY_ID" in message
-        assert "DATAPEEK_S3_ENDPOINT_URL" in message
+        assert "DATASETPEEK_S3_ACCESS_KEY_ID" in message
+        assert "DATASETPEEK_S3_ENDPOINT_URL" in message
     else:
         raise AssertionError("Expected anonymous 403 to explain credential configuration")
+
+
+def test_accepts_legacy_datapeek_s3_env_names():
+    config = s3_reader.s3_client_config_from_env({"DATAPEEK_S3_REGION": "eu-west-1"})
+
+    assert config.region == "eu-west-1"
