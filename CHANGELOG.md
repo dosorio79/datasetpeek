@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project uses semantic versioning tags.
 
+## [0.4.0] - 2026-05-23
+
+### Added
+- Dataset orientation summary and deterministic next-check guidance.
+- Column role hints, stronger quality signals, and capped top values for compact categorical/flag fields.
+- Markdown and standalone HTML report downloads generated from the structured in-memory profile.
+
+### Changed
+- Refactored profiling around a structured internal profile/report model.
+- Updated the results page and documentation for the 0.4.0 triage workflow.
+
 ## [0.3.3] - 2026-05-23
 
 ### Changed

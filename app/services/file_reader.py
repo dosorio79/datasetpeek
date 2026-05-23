@@ -15,6 +15,9 @@ from app.services.s3_reader import S3ReadError, download_s3_object, parse_s3_uri
 
 
 _CSV_DELIMITER_CANDIDATES = (",", ";", "\t")
+CSV_INCONSISTENT_ROWS_WARNING = (
+    "Some CSV rows had inconsistent values, so DatasetPeek read the affected data as text to continue profiling."
+)
 
 
 class FileValidationError(ValueError):
@@ -109,10 +112,11 @@ def read_uploaded_file(uploaded_file: UploadedFile) -> tuple[pl.DataFrame, int, 
 
     start = perf_counter()
     warnings: list[str] = []
+    settings = get_settings()
 
     try:
         if uploaded_file.file_type == "csv":
-            dataframe = _read_csv(uploaded_file.content, warnings)
+            dataframe = _read_csv(uploaded_file.content, warnings, settings=settings)
         else:
             dataframe = pl.read_parquet(BytesIO(uploaded_file.content))
     except Exception as exc:  # pragma: no cover - exact parser errors vary by dependency version
@@ -125,7 +129,7 @@ def read_uploaded_file(uploaded_file: UploadedFile) -> tuple[pl.DataFrame, int, 
     return dataframe, elapsed_ms, warnings
 
 
-def _read_csv(content: bytes, warnings: list[str]) -> pl.DataFrame:
+def _read_csv(content: bytes, warnings: list[str], *, settings: AppSettings) -> pl.DataFrame:
     """Read CSV content with delimiter detection and a conservative fallback path."""
 
     separator, auto_detected = _detect_csv_separator(content)
@@ -133,16 +137,24 @@ def _read_csv(content: bytes, warnings: list[str]) -> pl.DataFrame:
         warnings.append("CSV delimiter could not be auto-detected; falling back to comma.")
 
     try:
-        dataframe = pl.read_csv(BytesIO(content), separator=separator)
+        dataframe = pl.read_csv(
+            BytesIO(content),
+            separator=separator,
+            infer_schema_length=settings.csv_infer_schema_rows,
+        )
     except Exception:
         if separator != ",":
             warnings.append(f"Detected CSV delimiter {separator!r} failed to parse cleanly; falling back to comma.")
             try:
-                dataframe = pl.read_csv(BytesIO(content), separator=",")
+                dataframe = pl.read_csv(
+                    BytesIO(content),
+                    separator=",",
+                    infer_schema_length=settings.csv_infer_schema_rows,
+                )
             except Exception:
                 pass
 
-        warnings.append("CSV parsing fell back to a string-oriented read for inconsistent rows.")
+        warnings.append(CSV_INCONSISTENT_ROWS_WARNING)
         dataframe = pl.read_csv(BytesIO(content), separator=",", infer_schema=False, ignore_errors=True)
 
     if _looks_like_unsupported_delimiter_csv(content, dataframe, separator):

@@ -40,8 +40,10 @@ def detect_column_signals(
 
     non_null = series.drop_nulls()
     non_null_count = len(non_null)
-    if row_count == 0 or non_null_count == 0:
+    if row_count == 0:
         return signals
+    if non_null_count == 0:
+        return [_signal(column_name, "All missing", "No non-null values")]
 
     non_null_unique_count = non_null.n_unique()
     unique_ratio = unique_count / row_count if row_count else 0.0
@@ -62,6 +64,9 @@ def detect_column_signals(
     if is_boolean_like:
         signals.append(_signal(column_name, "Boolean disguised as string", "Values resemble yes/no, true/false, or 0/1"))
 
+    if _has_blank_strings(non_null):
+        signals.append(_signal(column_name, "Blank strings", "Contains empty or whitespace-only string values"))
+
     if _has_mixed_types(non_null):
         signals.append(_signal(column_name, "Suspicious mixed types", "Contains both numeric-like and free-text values"))
 
@@ -73,11 +78,14 @@ def detect_column_signals(
         top_frequency = int(top_row["count"])
         top_ratio = top_frequency / non_null_count if non_null_count else 0.0
 
+        if non_null_unique_count == 1:
+            signals.append(_signal(column_name, "Constant value", f"Only non-null value is {top_value!r}"))
+
         if top_ratio >= 0.95:
             signals.append(_signal(column_name, "Low variance", f'{top_value!r} appears {top_ratio:.1%}'))
 
         if non_null_unique_count == 2 and non_null_ratio >= 0.5 and _is_binary_target_domain(value_counts):
-            signals.append(_signal(column_name, "Binary / target", _binary_message(value_counts, non_null_count)))
+            signals.append(_signal(column_name, "Binary / possible target", _binary_message(value_counts, non_null_count)))
             has_binary_signal = True
         elif value_counts.height >= 2:
             top_two = value_counts.head(2)["count"].sum()
@@ -86,7 +94,7 @@ def detect_column_signals(
                 and non_null_ratio >= 0.5
                 and _is_binary_target_domain(value_counts.head(2))
             ):
-                signals.append(_signal(column_name, "Binary / target", _binary_message(value_counts.head(2), non_null_count)))
+                signals.append(_signal(column_name, "Binary / possible target", _binary_message(value_counts.head(2), non_null_count)))
                 has_binary_signal = True
 
     if not has_binary_signal and not is_boolean_like and _is_likely_categorical(series, unique_count, row_count):
@@ -101,6 +109,59 @@ def detect_column_signals(
         signals.append(_signal(column_name, "Possible numeric discrete", f"{non_null_unique_count} distinct integer values"))
 
     return signals
+
+
+def detect_column_role(
+    *,
+    column_name: str,
+    series: pl.Series,
+    row_count: int,
+    unique_count: int,
+    missing_count: int,
+) -> str:
+    """Return a deterministic, non-authoritative role hint for a column."""
+
+    non_null = series.drop_nulls()
+    non_null_count = len(non_null)
+    if row_count == 0 or non_null_count == 0:
+        return "Unknown"
+
+    non_null_unique_count = non_null.n_unique()
+    non_null_unique_ratio = non_null_unique_count / non_null_count if non_null_count else 0.0
+    non_null_ratio = (row_count - missing_count) / row_count if row_count else 0.0
+
+    if _looks_like_id(column_name, series, non_null_unique_ratio, non_null_ratio):
+        return "Identifier"
+
+    if non_null_unique_count == 2:
+        value_counts = non_null.value_counts(sort=True)
+        if _is_binary_target_domain(value_counts):
+            return "Binary flag"
+
+    if _is_boolean_like(non_null):
+        return "Boolean flag"
+
+    if _is_likely_categorical(series, unique_count, row_count):
+        return "Category"
+
+    if _is_numeric_discrete(
+        column_name=column_name,
+        series=non_null,
+        unique_count=non_null_unique_count,
+        non_null_unique_ratio=non_null_unique_ratio,
+    ):
+        return "Numeric code"
+
+    if series.dtype.is_numeric():
+        return "Numeric measure"
+
+    if _is_temporal(series):
+        return "Datetime"
+
+    if series.dtype == pl.String:
+        return "Text"
+
+    return "Unknown"
 
 
 def _signal(column: str, kind: str, message: str) -> dict[str, str]:
@@ -184,6 +245,12 @@ def _has_mixed_types(series: pl.Series) -> bool:
     return 0 < numeric_like < len(sample)
 
 
+def _has_blank_strings(series: pl.Series) -> bool:
+    if series.dtype != pl.String:
+        return False
+    return any(str(value).strip() == "" for value in series.head(100).to_list())
+
+
 def _looks_numeric(value: str) -> bool:
     try:
         float(value)
@@ -210,3 +277,10 @@ def _is_numeric_discrete(
     if bool(ID_HINT_PATTERN.search(column_name.lower())):
         return False
     return True
+
+
+def _is_temporal(series: pl.Series) -> bool:
+    checker = getattr(series.dtype, "is_temporal", None)
+    if callable(checker):
+        return bool(checker())
+    return series.dtype in (pl.Date, pl.Time) or isinstance(series.dtype, pl.Datetime)

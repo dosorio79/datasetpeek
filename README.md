@@ -4,12 +4,20 @@
 
 [![CI](https://github.com/dosorio79/datasetpeek/actions/workflows/ci.yml/badge.svg)](https://github.com/dosorio79/datasetpeek/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.3.3-informational)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.0-informational)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/python-3.12+-blue)](https://www.python.org/)
 
 Fast, minimal profiler for CSV and Parquet files.
 
 DatasetPeek is a small server-rendered app built with Robyn, Polars, and Jinja2. It gives a technical user a quick first-pass read on a local, S3, or MinIO dataset without turning the UI into a full EDA tool.
+
+## Current Capabilities
+
+- Local and S3-compatible CSV/Parquet profiling.
+- Deterministic orientation summary and lightweight next-check guidance.
+- Column role hints, quality signals, capped top values, and numeric summaries.
+- Random sample cycling plus head and tail previews.
+- Markdown and standalone HTML report downloads generated from the in-memory profile.
 
 ## Setup
 
@@ -60,6 +68,22 @@ If `DATASETPEEK_S3_ENDPOINT_URL` is set, DatasetPeek uses path-style requests su
 DatasetPeek profiles the full uploaded file or S3 object when it is within the size limit. If the object is an exported sample from a larger dataset, the reported rows, signals, and summaries describe that sample.
 
 Legacy `DATAPEEK_*` environment variables are still accepted as fallbacks during the rename.
+
+## Operational Settings
+
+DatasetPeek reads operational settings from environment variables at runtime:
+
+| Setting | Default | Purpose |
+| --- | ---: | --- |
+| `DATASETPEEK_MAX_UPLOAD_MB` | `100` | Reject uploads or S3 objects above this size. |
+| `DATASETPEEK_LARGE_FILE_WARNING_MB` | `50` | Show a large-file warning above this size. |
+| `DATASETPEEK_RANDOM_SAMPLE_ROWS` | `10` | Number of rows in each random sample preview. |
+| `DATASETPEEK_HEAD_TAIL_ROWS` | `5` | Number of rows shown in head and tail previews. |
+| `DATASETPEEK_SAMPLE_VALUE_COUNT` | `3` | Number of sample values shown per column. |
+| `DATASETPEEK_TEXT_TRUNCATE_CHARS` | `50` | Maximum displayed length for cell/sample text. |
+| `DATASETPEEK_TOP_VALUES_LIMIT` | `5` | Maximum top values shown for compact categorical/flag fields. |
+| `DATASETPEEK_CSV_INFER_SCHEMA_ROWS` | `5000` | Number of CSV rows Polars scans for schema inference. |
+| `DATASETPEEK_S3_DOWNLOAD_TIMEOUT_SECONDS` | `30` | Timeout for S3-compatible object downloads. |
 
 ## Test
 

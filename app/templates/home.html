@@ -41,12 +41,12 @@
             <input id="dataset" name="dataset" type="file" accept=".csv,.parquet" class="sr-only">
             <input id="dataset-name" name="dataset_name" type="hidden">
             <button type="button" class="secondary-button" id="upload-trigger">Choose file</button>
-            <div class="submit-stack">
+            <div class="submit-stack" id="submit-stack-file" hidden>
               <button type="submit" id="analyze-submit">
                 <span class="button-spinner" aria-hidden="true"></span>
-                <span class="button-label">Analyze</span>
+                <span class="button-label">Analyze dataset</span>
               </button>
-              <p class="submit-status" id="submit-status" aria-live="polite" hidden>Ready to profile the dataset.</p>
+              <p class="submit-status" id="submit-status" aria-live="polite" hidden>Ready to analyze.</p>
             </div>
           </div>
         </div>
@@ -54,12 +54,12 @@
           <label for="s3-uri" class="label">S3 / MinIO URI</label>
           <input id="s3-uri" name="s3_uri" type="text" inputmode="url" placeholder="s3://bucket/path/data.csv">
           <p class="input-help">Uses the server-configured object storage credentials.</p>
-          <div class="submit-stack submit-stack-inline">
+          <div class="submit-stack submit-stack-inline" id="submit-stack-s3" hidden>
             <button type="submit" id="analyze-submit-s3">
               <span class="button-spinner" aria-hidden="true"></span>
-              <span class="button-label">Analyze</span>
+              <span class="button-label">Analyze dataset</span>
             </button>
-            <p class="submit-status" id="submit-status-s3" aria-live="polite" hidden>Ready to profile the dataset.</p>
+            <p class="submit-status" id="submit-status-s3" aria-live="polite" hidden>Ready to analyze.</p>
           </div>
         </div>
       </div>
@@ -81,11 +81,48 @@
       <article class="panel stat"><span>Columns</span><strong>{{ file_summary.columns }}</strong></article>
       <article class="panel stat"><span>Read time</span><strong>{{ file_summary.read_time_ms }} ms</strong></article>
     </section>
-    <p class="result-note">DatasetPeek profiles the full uploaded file or S3 object when it is within the size limit. If the object is an exported sample, these results describe that sample.</p>
+    <div class="result-meta-row">
+      <p class="result-note">DatasetPeek profiles the full uploaded file or S3 object when it is within the size limit. If the object is an exported sample, these results describe that sample.</p>
+      <div class="report-actions" aria-label="Report downloads">
+        <button type="button" class="link-button" id="download-markdown">Export Markdown</button>
+        <button type="button" class="link-button" id="download-html">Export HTML</button>
+      </div>
+    </div>
+    <script type="application/json" id="markdown-report-data">{{ markdown_report | tojson }}</script>
+    <script type="application/json" id="html-report-data">{{ html_report | tojson }}</script>
+
+    <section class="panel guidance-panel">
+      <div class="guidance-grid">
+        <section>
+          <h2>Dataset readout</h2>
+          {% if orientation %}
+            <ul class="insight-list">
+              {% for item in orientation %}
+                <li>{{ item }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="muted">No dataset readout was generated.</p>
+          {% endif %}
+        </section>
+        <section>
+          <h2>Suggested checks</h2>
+          {% if next_checks %}
+            <ul class="insight-list">
+              {% for item in next_checks %}
+                <li>{{ item }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="muted">No follow-up checks were generated.</p>
+          {% endif %}
+        </section>
+      </div>
+    </section>
 
     <section class="panel">
       <div class="section-heading">
-        <h2>Signals / Warnings</h2>
+        <h2>Data quality signals</h2>
       </div>
       {% if signals %}
         <div class="table-wrap">
@@ -109,7 +146,7 @@
           </table>
         </div>
       {% else %}
-        <p class="muted">No notable signals detected with the MVP heuristics.</p>
+        <p class="muted">No notable deterministic signals detected.</p>
       {% endif %}
     </section>
 
@@ -123,9 +160,11 @@
             <tr>
               <th>Name</th>
               <th>Dtype</th>
+              <th>Role</th>
               <th>Non-null %</th>
               <th>Missing %</th>
               <th>Unique</th>
+              <th>Top values</th>
               <th>Sample values</th>
             </tr>
           </thead>
@@ -134,9 +173,11 @@
               <tr>
                 <td>{{ column.name }}</td>
                 <td>{{ column.dtype }}</td>
+                <td><span class="role-label">{{ column.role }}</span></td>
                 <td>{{ column.non_null_pct }}</td>
                 <td>{{ column.missing_pct }}</td>
                 <td>{{ column.unique_count }}</td>
+                <td class="sample-cell">{{ column.top_values_text or "—" }}</td>
                 <td class="sample-cell">{{ column.sample_values | join(", ") }}</td>
               </tr>
             {% endfor %}
@@ -266,16 +307,16 @@
           <p>Filename, type, row count, column count, read time.</p>
         </article>
         <article>
-          <strong>Signals</strong>
+          <strong>Data quality signals</strong>
           <p>IDs, missingness, low variance, binary flags, mixed types.</p>
         </article>
         <article>
           <strong>Column overview</strong>
-          <p>Type, completeness, uniqueness, representative values.</p>
+          <p>Type, role, completeness, uniqueness, top values.</p>
         </article>
         <article>
-          <strong>Preview</strong>
-          <p>Random sample plus head and tail.</p>
+          <strong>Reports</strong>
+          <p>Markdown and standalone HTML triage reports.</p>
         </article>
       </div>
     </section>
@@ -299,6 +340,8 @@
         document.getElementById("submit-status"),
         document.getElementById("submit-status-s3"),
       ].filter(Boolean);
+      const submitStackFile = document.getElementById("submit-stack-file");
+      const submitStackS3 = document.getElementById("submit-stack-s3");
       const analyzeLabels = submitButtons.map((button) => button?.querySelector(".button-label")).filter(Boolean);
       const trigger = document.getElementById("upload-trigger");
       const dropZone = document.getElementById("drop-zone");
@@ -310,8 +353,12 @@
       const sampleTable = document.getElementById("sample-table");
       const sampleTableBody = sampleTable?.querySelector("tbody");
       const sampleTableHead = sampleTable?.querySelector("thead tr");
+      const downloadMarkdown = document.getElementById("download-markdown");
+      const downloadHtml = document.getElementById("download-html");
+      const markdownReport = JSON.parse(document.getElementById("markdown-report-data")?.textContent || '""');
+      const htmlReport = JSON.parse(document.getElementById("html-report-data")?.textContent || '""');
 
-      if (!form || !fileInput || !filenameInput || !s3Input || !sourceSummary || !fileMeta || !fileType || !fileSize || submitButtons.length === 0 || analyzeLabels.length === 0 || !trigger || !dropZone || !uploadActions || modeInputs.length === 0 || sourcePanels.length === 0) {
+      if (!form || !fileInput || !filenameInput || !s3Input || !sourceSummary || !fileMeta || !fileType || !fileSize || submitButtons.length === 0 || analyzeLabels.length === 0 || !submitStackFile || !submitStackS3 || !trigger || !dropZone || !uploadActions || modeInputs.length === 0 || sourcePanels.length === 0) {
         return;
       }
 
@@ -328,6 +375,24 @@
       const fileExtension = (fileName) => {
         const ext = fileName.split(".").pop();
         return ext ? ext.toUpperCase() : "File";
+      };
+      const syncSubmitVisibility = (isLoading = false) => {
+        const [file] = fileInput.files || [];
+        const s3Uri = s3Input.value.trim();
+        const mode = activeMode();
+        submitStackFile.hidden = !(mode === "file" && (file || isLoading));
+        submitStackS3.hidden = !(mode === "s3" && (s3Uri || isLoading));
+      };
+      const downloadText = (filename, mimeType, content) => {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
       };
       const updateFileState = (file) => {
         if (file) {
@@ -346,11 +411,11 @@
         form.dataset.loading = isLoading ? "true" : "false";
         const [file] = fileInput.files || [];
         const s3Uri = s3Input.value.trim();
-        submitButtons.forEach((button) => {
-          button.disabled = isLoading || (activeMode() === "file" ? !file : !s3Uri);
-        });
+        syncSubmitVisibility(isLoading);
+        analyzeSubmit.disabled = isLoading || !file;
+        analyzeSubmitS3.disabled = isLoading || !s3Uri;
         analyzeLabels.forEach((label) => {
-          label.textContent = isLoading ? "Analyzing..." : "Analyze";
+          label.textContent = isLoading ? "Analyzing..." : "Analyze dataset";
         });
         submitStatuses.forEach((status) => {
           status.hidden = !isLoading;
@@ -404,13 +469,13 @@
           panel.hidden = panel.dataset.sourcePanel !== mode;
         });
         dropZone.classList.toggle("is-drop-active", mode === "file");
-        submitButtons.forEach((button) => {
-          button.disabled = mode === "file" ? !file : !s3Uri;
-        });
+        syncSubmitVisibility(false);
+        analyzeSubmit.disabled = !file;
+        analyzeSubmitS3.disabled = !s3Uri;
         updateFileState(file);
         submitStatuses.forEach((status) => {
           status.hidden = true;
-          status.textContent = "Ready to profile the dataset.";
+          status.textContent = "Ready to analyze.";
         });
       };
 
@@ -509,6 +574,16 @@
         nextSample.addEventListener("click", () => {
           sampleIndex = (sampleIndex + 1) % sampleSets.length;
           renderSampleTable();
+        });
+      }
+      if (downloadMarkdown && markdownReport) {
+        downloadMarkdown.addEventListener("click", () => {
+          downloadText("datasetpeek-report.md", "text/markdown;charset=utf-8", markdownReport);
+        });
+      }
+      if (downloadHtml && htmlReport) {
+        downloadHtml.addEventListener("click", () => {
+          downloadText("datasetpeek-report.html", "text/html;charset=utf-8", htmlReport);
         });
       }
     })();

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from robyn import Robyn
+from robyn import Response, Robyn
 from robyn.templating import JinjaTemplate
 
 from app.services.file_reader import FileValidationError, UploadedFile, read_uploaded_file
@@ -9,6 +9,14 @@ from app.services.profiler import build_profile_view_model, empty_view_model
 
 def register_profile_routes(*, app: Robyn, templates: JinjaTemplate) -> None:
     """Register upload analysis routes."""
+
+    @app.get("/analyze")
+    def analyze_redirect():
+        return Response(
+            status_code=303,
+            headers={"Location": "/"},
+            description="",
+        )
 
     @app.post("/analyze")
     def analyze(request=None, files=None, form_data=None):

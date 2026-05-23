@@ -7,7 +7,7 @@
 
 **Name:** DatasetPeek  
 **Type:** Single-page web app  
-**Current version:** 0.3.3  
+**Current version:** 0.4.0
 
 **Goal:**
 > Understand a dataset in seconds.
@@ -22,7 +22,7 @@
 
 ## 2. Version Roadmap
 
-### 0.3.3 — Current Version
+### 0.3.3 — Previous Version
 
 MVP first-contact profiler for local CSV/Parquet files and configured S3-compatible objects, with upload hardening and a more polished upload workflow.
 
@@ -40,9 +40,9 @@ Focus:
 
 ---
 
-### 0.4.0 — Triage Core
+### 0.4.0 — Current Version / Triage Core
 
-The next version should make DatasetPeek a stronger deterministic triage assistant while preserving its first-contact scope.
+This version makes DatasetPeek a stronger deterministic triage assistant while preserving its first-contact scope.
 
 Goal:
 
@@ -66,6 +66,7 @@ Operational settings should cover:
 - sample value count
 - text truncation length
 - top-values cap
+- CSV schema inference row count
 - S3 download timeout
 
 Explicitly deferred from 0.4.0:
@@ -85,7 +86,50 @@ Implementation blocks:
 6. Add Markdown and HTML report downloads.
 7. Prepare the 0.4.0 release.
 
+Acceptance details:
+- column roles are deterministic hints, not authoritative schema labels
+- top values are capped and shown only where concise enough to support triage
+- orientation and next checks are generated from the same profile model as the rendered page
+- Markdown and HTML downloads are human-readable reports, not JSON data exports
+- downloaded HTML is self-contained and does not rely on external assets or JavaScript
+
 This version should improve guidance and signal quality without adding full EDA behavior or persistence.
+
+---
+
+### 0.5.0 — Model Export
+
+The following version should make DatasetPeek profiles portable for automation, review, and downstream tooling without exporting raw dataset rows.
+
+Goal:
+
+> Give users a compact, versioned profile model they can pass to other tools.
+
+Committed scope:
+- downloadable `profile-model.json`
+- explicit `schema_version`
+- file summary
+- column names, dtypes, inferred roles, completeness, and uniqueness
+- deterministic signals
+- capped top values
+- orientation summary
+- next checks
+- report metadata such as DatasetPeek version and generated timestamp
+
+Explicitly excluded from 0.5.0:
+- raw data export
+- random sample rows by default
+- full report JSON with presentation-only fields
+- schema comparison
+- persistence or saved profile history
+
+Implementation notes:
+- generate JSON from the same structured profile model used by 0.4.0 reports
+- treat the JSON shape as a versioned contract
+- keep the export deterministic and compact
+- avoid exposing internal template or view-model fields
+
+This version should make the 0.4.0 triage model reusable without turning DatasetPeek into a data extraction or persistence tool.
 
 ---
 
@@ -163,7 +207,7 @@ Existing tools:
 
 ---
 
-### 7.2 Signals / Warnings (Core Feature)
+### 7.2 Data Quality Signals (Core Feature)
 
 Heuristic-driven insights per column:
 
@@ -247,7 +291,7 @@ For numeric columns (int + float only):
 ~~~
 Upload
 → File Summary
-→ Signals / Warnings
+→ Data Quality Signals
 → Column Overview
 → Sample Data
 → (Optional) Head & Tail
@@ -436,8 +480,8 @@ df.sample(n=10, seed=45)
 
 ## 16. Future Extensions
 
-- JSON export  
-- schema comparison  
+- versioned profile-model JSON export
+- schema comparison from saved `profile-model.json` exports as a natural 0.6.0 candidate
 - larger-file/streaming performance  
 - YAML/settings-file support  
 - UI-managed tuning  
