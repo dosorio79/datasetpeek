@@ -7,7 +7,7 @@
 
 **Name:** DatasetPeek  
 **Type:** Single-page web app  
-**Current version:** 0.3.0  
+**Current version:** 0.3.3  
 
 **Goal:**
 > Understand a dataset in seconds.
@@ -22,9 +22,9 @@
 
 ## 2. Version Roadmap
 
-### 0.3.0 — Current Version
+### 0.3.3 — Current Version
 
-MVP first-contact profiler for local CSV/Parquet files and configured S3-compatible objects, with upload hardening.
+MVP first-contact profiler for local CSV/Parquet files and configured S3-compatible objects, with upload hardening and a more polished upload workflow.
 
 Focus:
 - upload CSV or Parquet
@@ -34,6 +34,8 @@ Focus:
 - show schema, missingness, uniqueness, numeric summaries, and sample rows
 - reject uploads above 100 MB before parsing or caching
 - clarify that results cover the full accepted file/object, or the exported sample if the object itself is a sample
+- support drag-and-drop local upload
+- show file selection and analysis loading feedback
 - avoid charts, correlations, dashboards, and exploratory workflows
 
 ---
@@ -130,12 +132,15 @@ Existing tools:
 
 ---
 
-## 6. 0.1.x Current Scope
+## 6. 0.3.x Current Scope
 
 ### Input
 - Upload:
   - CSV  
   - Parquet  
+- S3-compatible object URI:
+  - CSV
+  - Parquet
 
 ### File Constraints
 - Recommended max size: **≤ 50–100 MB**  
@@ -229,7 +234,7 @@ For numeric columns (int + float only):
 - labeled: “Sample rows (random)”  
 
 #### Interaction:
-- 🔄 Resample button  
+- Next sample button cycling through deterministic random samples  
 
 #### Secondary (collapsed):
 - Head (first 5 rows)  
@@ -314,7 +319,7 @@ Upload
 - **Backend:** Robyn  
 - **Processing:** Polars  
 - **Templating:** Jinja2  
-- **Frontend:** HTML + minimal CSS (+ optional HTMX)  
+- **Frontend:** HTML + minimal CSS + vanilla JavaScript  
 
 ---
 
@@ -330,10 +335,11 @@ app/
     file_reader.py
     profiler.py
     heuristics.py
+    s3_reader.py
+    settings.py
   templates/
     base.html
     home.html
-    profile.html
   static/
     styles.css
 ~~~
@@ -342,7 +348,7 @@ app/
 
 ### Processing Flow
 
-1. Upload file  
+1. Upload file or provide S3-compatible object URI  
 2. Detect format (CSV / Parquet)  
 3. Load with Polars  
 4. Compute:
@@ -369,10 +375,13 @@ app/
 ### Sampling Strategy
 
 - full dataset loaded (within size constraint)  
-- random sample:
+- deterministic random sample set:
 
 ~~~python
 df.sample(n=10, seed=42)
+df.sample(n=10, seed=43)
+df.sample(n=10, seed=44)
+df.sample(n=10, seed=45)
 ~~~
 
 ---
