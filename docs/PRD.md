@@ -7,7 +7,7 @@
 
 **Name:** DatasetPeek  
 **Type:** Single-page web app  
-**Current version:** 0.3.2  
+**Current version:** 0.3.3  
 
 **Goal:**
 > Understand a dataset in seconds.
@@ -22,7 +22,7 @@
 
 ## 2. Version Roadmap
 
-### 0.3.2 — Current Version
+### 0.3.3 — Current Version
 
 MVP first-contact profiler for local CSV/Parquet files and configured S3-compatible objects, with upload hardening and a more polished upload workflow.
 
