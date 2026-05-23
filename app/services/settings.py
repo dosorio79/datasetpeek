@@ -22,6 +22,7 @@ class AppSettings:
     sample_value_count: int = 3
     text_truncate_chars: int = 50
     top_values_limit: int = 5
+    csv_infer_schema_rows: int = 5000
     s3_download_timeout_seconds: int = 30
 
     @property
@@ -69,6 +70,12 @@ def get_settings(environ: Mapping[str, str] | None = None) -> AppSettings:
             default=50,
         ),
         top_values_limit=_env_positive_int(env, "DATASETPEEK_TOP_VALUES_LIMIT", "DATAPEEK_TOP_VALUES_LIMIT", default=5),
+        csv_infer_schema_rows=_env_positive_int(
+            env,
+            "DATASETPEEK_CSV_INFER_SCHEMA_ROWS",
+            "DATAPEEK_CSV_INFER_SCHEMA_ROWS",
+            default=5000,
+        ),
         s3_download_timeout_seconds=_env_positive_int(
             env,
             "DATASETPEEK_S3_DOWNLOAD_TIMEOUT_SECONDS",

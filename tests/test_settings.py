@@ -17,6 +17,7 @@ def test_settings_defaults_match_current_runtime_behavior():
     assert settings.sample_value_count == 3
     assert settings.text_truncate_chars == 50
     assert settings.top_values_limit == 5
+    assert settings.csv_infer_schema_rows == 5000
     assert settings.s3_download_timeout_seconds == 30
 
 
@@ -30,6 +31,7 @@ def test_settings_read_operational_overrides_from_env():
             "DATASETPEEK_SAMPLE_VALUE_COUNT": "1",
             "DATASETPEEK_TEXT_TRUNCATE_CHARS": "12",
             "DATASETPEEK_TOP_VALUES_LIMIT": "3",
+            "DATASETPEEK_CSV_INFER_SCHEMA_ROWS": "2000",
             "DATASETPEEK_S3_DOWNLOAD_TIMEOUT_SECONDS": "7",
         }
     )
@@ -41,6 +43,7 @@ def test_settings_read_operational_overrides_from_env():
     assert settings.sample_value_count == 1
     assert settings.text_truncate_chars == 12
     assert settings.top_values_limit == 3
+    assert settings.csv_infer_schema_rows == 2000
     assert settings.s3_download_timeout_seconds == 7
 
 

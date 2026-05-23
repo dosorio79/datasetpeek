@@ -11,7 +11,7 @@ from main import parse_runtime_config
 from app.main import create_app
 from app.services.file_reader import FileValidationError, UploadedFile, read_uploaded_file
 from app.services.heuristics import detect_column_signals
-from app.services.profiler import build_profile_view_model
+from app.services.profiler import build_profile_model, build_profile_view_model
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
@@ -34,18 +34,18 @@ def test_read_uploaded_csv_and_detect_signals():
     signal_kinds = {(signal["column"], signal["kind"]) for signal in profile["signals"]}
     assert ("customer_id", "Possible ID") in signal_kinds
     assert ("status", "Low variance") in signal_kinds
-    assert ("churn_flag", "Binary / target") in signal_kinds
+    assert ("churn_flag", "Binary / possible target") in signal_kinds
     assert ("mostly_missing", "Mostly missing") in signal_kinds
     assert ("mixed_value", "Suspicious mixed types") in signal_kinds
-    assert ("mostly_missing", "Binary / target") not in signal_kinds
+    assert ("mostly_missing", "Binary / possible target") not in signal_kinds
     assert ("mostly_missing", "Possible ID") not in signal_kinds
-    assert ("status", "Binary / target") not in signal_kinds
+    assert ("status", "Binary / possible target") not in signal_kinds
     assert ("notes", "Possible ID") not in signal_kinds
     assert ("mixed_value", "Possible ID") not in signal_kinds
     assert ("score", "Possible ID") not in signal_kinds
     assert ("customer_id", "Likely categorical") not in signal_kinds
     assert ("opt_in_text", "Boolean disguised as string") in signal_kinds
-    assert ("opt_in_text", "Binary / target") not in signal_kinds
+    assert ("opt_in_text", "Binary / possible target") not in signal_kinds
     assert ("opt_in_text", "Likely categorical") not in signal_kinds
     assert ("churn_flag", "Likely categorical") not in signal_kinds
     assert profile["file_summary"]["rows"] == 12
@@ -78,6 +78,80 @@ def test_profile_uses_operational_display_settings(monkeypatch):
     assert any("…" in row["notes"] for row in profile["sample_rows"])
 
 
+def test_profile_adds_roles_top_values_orientation_reports(monkeypatch):
+    monkeypatch.setenv("DATASETPEEK_TOP_VALUES_LIMIT", "2")
+    uploaded_file = UploadedFile(
+        filename="sample_profile.csv",
+        content=(FIXTURE_DIR / "sample_profile.csv").read_bytes(),
+        file_type="csv",
+    )
+    dataframe, read_time_ms, warnings = read_uploaded_file(uploaded_file)
+
+    profile = build_profile_view_model(
+        uploaded_file=uploaded_file,
+        dataframe=dataframe,
+        read_time_ms=read_time_ms,
+        warnings=warnings,
+    )
+
+    columns = {column["name"]: column for column in profile["columns"]}
+    assert columns["customer_id"]["role"] == "Identifier"
+    assert columns["churn_flag"]["role"] == "Binary flag"
+    assert columns["opt_in_text"]["role"] == "Boolean flag"
+    assert columns["segment"]["role"] == "Category"
+    assert len(columns["segment"]["top_values"]) == 2
+    assert "Likely identifier columns: customer_id." in profile["orientation"]
+    assert "Confirm binary flag meaning and balance; decide whether any flag is an outcome." in profile["next_checks"]
+    assert "# DatasetPeek Profile Report" in profile["markdown_report"]
+    assert "## Column Overview" in profile["markdown_report"]
+    assert "<!doctype html>" in profile["html_report"]
+    assert "<script" not in profile["html_report"]
+    assert "Sample rows" not in profile["html_report"]
+
+
+def test_structured_profile_is_report_source():
+    uploaded_file = UploadedFile(
+        filename="sample_profile.csv",
+        content=(FIXTURE_DIR / "sample_profile.csv").read_bytes(),
+        file_type="csv",
+    )
+    dataframe, read_time_ms, warnings = read_uploaded_file(uploaded_file)
+
+    profile = build_profile_model(
+        uploaded_file=uploaded_file,
+        dataframe=dataframe,
+        read_time_ms=read_time_ms,
+        warnings=warnings,
+    )
+
+    assert profile.file_summary.rows == 12
+    assert any(column.role == "Identifier" for column in profile.columns)
+    assert profile.markdown_report
+    assert profile.html_report
+
+
+def test_csv_inconsistency_warning_becomes_quality_signal():
+    uploaded_file = UploadedFile(
+        filename="customers.csv",
+        content=b"id,name\n1,Alice\n",
+        file_type="csv",
+    )
+    dataframe = pl.DataFrame({"id": [1, 2], "name": ["Alice", "Bob"]})
+
+    profile = build_profile_view_model(
+        uploaded_file=uploaded_file,
+        dataframe=dataframe,
+        read_time_ms=1,
+        warnings=[file_reader.CSV_INCONSISTENT_ROWS_WARNING],
+    )
+
+    assert ("Dataset", "CSV inconsistency") in {
+        (signal["column"], signal["kind"])
+        for signal in profile["signals"]
+    }
+    assert any("text parsing" in check for check in profile["next_checks"])
+
+
 def test_read_uploaded_parquet(tmp_path):
     dataframe = pl.read_csv(FIXTURE_DIR / "sample_profile.csv")
     parquet_path = tmp_path / "sample_profile.parquet"
@@ -93,6 +167,29 @@ def test_read_uploaded_parquet(tmp_path):
     assert profiled_frame.shape == dataframe.shape
     assert read_time_ms >= 0
     assert warnings == []
+
+
+def test_read_uploaded_csv_uses_configured_schema_inference(monkeypatch):
+    calls = []
+
+    def fake_read_csv(source, **kwargs):
+        calls.append(kwargs)
+        return pl.DataFrame({"id": [1], "value": ["ok"]})
+
+    monkeypatch.setenv("DATASETPEEK_CSV_INFER_SCHEMA_ROWS", "1234")
+    monkeypatch.setattr(file_reader.pl, "read_csv", fake_read_csv)
+    uploaded_file = UploadedFile(
+        filename="customers.csv",
+        content=b"id,value\n1,ok\n",
+        file_type="csv",
+    )
+
+    dataframe, read_time_ms, warnings = read_uploaded_file(uploaded_file)
+
+    assert dataframe.shape == (1, 2)
+    assert read_time_ms >= 0
+    assert warnings == []
+    assert calls[0]["infer_schema_length"] == 1234
 
 
 def test_extracts_filename_from_multipart_request_when_files_are_raw_bytes():
@@ -262,7 +359,13 @@ def test_routes_render_profile_and_sample_sets():
     assert "Next sample" in analyze_response.text
     assert "Sample 1" in analyze_response.text
     assert "Column Overview" in analyze_response.text
-    assert "Signals / Warnings" in analyze_response.text
+    assert "Data quality signals" in analyze_response.text
+    assert "Dataset readout" in analyze_response.text
+    assert "Suggested checks" in analyze_response.text
+    assert "Export Markdown" in analyze_response.text
+    assert "Export HTML" in analyze_response.text
+    assert "<th>Role</th>" in analyze_response.text
+    assert "<th>Top values</th>" in analyze_response.text
     assert "Boolean disguised as string" in analyze_response.text
 
 
@@ -285,6 +388,15 @@ def test_route_analyzes_s3_uri(monkeypatch):
     assert response.status_code == 200
     assert "s3://nyc-tlc/misc/taxi_zone_lookup.csv" in response.text
     assert "Column Overview" in response.text
+
+
+def test_get_analyze_redirects_to_home():
+    client = RobynClient(create_app())
+
+    response = client.get("/analyze")
+
+    assert response.status_code == 303
+    assert response.headers["Location"] == "/"
 
 
 def test_home_renders_help_menu():
@@ -384,3 +496,28 @@ def test_numeric_discrete_signal_not_emitted_for_id_column():
     )
     kinds = {s["kind"] for s in signals}
     assert "Possible numeric discrete" not in kinds
+
+
+def test_quality_signals_include_all_missing_constant_and_blank_strings():
+    dataframe = pl.DataFrame(
+        {
+            "empty_col": [None, None, None],
+            "constant_col": ["active", "active", "active"],
+            "blank_col": ["", "value", "  "],
+        }
+    )
+
+    signal_kinds = set()
+    for series in dataframe.iter_columns():
+        for signal in detect_column_signals(
+            column_name=series.name,
+            series=series,
+            row_count=dataframe.height,
+            unique_count=series.n_unique(),
+            missing_count=series.null_count(),
+        ):
+            signal_kinds.add((signal["column"], signal["kind"]))
+
+    assert ("empty_col", "All missing") in signal_kinds
+    assert ("constant_col", "Constant value") in signal_kinds
+    assert ("blank_col", "Blank strings") in signal_kinds
