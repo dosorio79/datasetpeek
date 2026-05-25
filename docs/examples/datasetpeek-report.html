@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DatasetPeek Profile Report</title>
+<style>
+body{font-family:Arial,sans-serif;line-height:1.45;margin:32px;color:#172026;background:#fff}
+h1,h2{color:#102a35}table{border-collapse:collapse;width:100%;margin:12px 0 24px}
+th,td{border:1px solid #d6dee3;padding:8px;text-align:left;vertical-align:top}
+th{background:#eef5f7}.muted{color:#5b6b73}
+</style>
+</head>
+<body>
+<h1>DatasetPeek Profile Report</h1>
+<p class="muted">DatasetPeek version: 0.4.0</p>
+<h2>File Summary</h2>
+<ul>
+<li><strong>Filename:</strong> synthetic_financial_sentiment_dataset_20k.csv</li>
+<li><strong>Type:</strong> CSV</li>
+<li><strong>Rows:</strong> 19998</li>
+<li><strong>Columns:</strong> 3</li>
+<li><strong>Read time:</strong> 1252 ms</li>
+</ul>
+<h2>Orientation</h2>
+<ul><li>synthetic_financial_sentiment_dataset_20k.csv is a CSV dataset with 19998 rows and 3 columns.</li><li>Detected 3 categorical/flag columns and 0 numeric columns.</li></ul>
+<h2>Signals</h2>
+<table><thead><tr><th>Column</th><th>Signal</th><th>Detail</th></tr></thead><tbody><tr><td>text</td><td>Likely categorical</td><td>180 distinct values</td></tr><tr><td>language</td><td>Likely categorical</td><td>6 distinct values</td></tr><tr><td>sentiment</td><td>Likely categorical</td><td>3 distinct values</td></tr></tbody></table>
+<h2>Column Overview</h2>
+<table><thead><tr><th>Name</th><th>Dtype</th><th>Role</th><th>Non-null %</th><th>Missing %</th><th>Unique</th><th>Top values</th></tr></thead><tbody><tr><td>text</td><td>String</td><td>Category</td><td>100.0%</td><td>0.0%</td><td>180</td><td>Demasiados cargos ocultos, no son transparentes. (133, 0.7%), Personale professionale e cortese, esperienza ecc… (132, 0.7%), Customer service was rude and unhelpful. (131, 0.7%), Troppe spese nascoste, non sono trasparenti. (131, 0.7%), Aprovação rápida e os fundos estavam disponíveis … (129, 0.6%)</td></tr><tr><td>language</td><td>String</td><td>Category</td><td>100.0%</td><td>0.0%</td><td>6</td><td>en (3333, 16.7%), pt (3333, 16.7%), es (3333, 16.7%), fr (3333, 16.7%), de (3333, 16.7%)</td></tr><tr><td>sentiment</td><td>String</td><td>Category</td><td>100.0%</td><td>0.0%</td><td>3</td><td>positive (6666, 33.3%), negative (6666, 33.3%), neutral (6666, 33.3%)</td></tr></tbody></table>
+<h2>Numeric Summary</h2>
+<p>No numeric columns detected.</p>
+<h2>Next Checks</h2>
+<ul><li>Review inferred roles and sample rows before downstream use.</li></ul>
+</body>
+</html>
