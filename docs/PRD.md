@@ -7,7 +7,7 @@
 
 **Name:** DatasetPeek  
 **Type:** Single-page web app  
-**Current version:** 0.4.0
+**Current version:** 0.4.1
 
 **Goal:**
 > Understand a dataset in seconds.
@@ -22,54 +22,37 @@
 
 ## 2. Version Roadmap
 
-### 0.3.3 — Previous Version
+### 0.4.0 — Previous Version
 
-MVP first-contact profiler for local CSV/Parquet files and configured S3-compatible objects, with upload hardening and a more polished upload workflow.
+Deterministic triage core for local CSV/Parquet files and configured S3-compatible objects, with role hints, stronger quality signals, and portable human-readable reports.
 
 Focus:
-- upload CSV or Parquet
-- analyze configured S3-compatible CSV or Parquet objects
-- return a fast single-page profile
-- surface high-signal column warnings
-- show schema, missingness, uniqueness, numeric summaries, and sample rows
-- reject uploads above 100 MB before parsing or caching
-- clarify that results cover the full accepted file/object, or the exported sample if the object itself is a sample
-- support drag-and-drop local upload
-- show file selection and analysis loading feedback
-- avoid charts, correlations, dashboards, and exploratory workflows
-
----
-
-### 0.4.0 — Current Version / Triage Core
-
-This version makes DatasetPeek a stronger deterministic triage assistant while preserving its first-contact scope.
-
-Goal:
-
-> Tell me what this dataset appears to be, what looks risky, and what I should check next.
-
-Committed scope:
 - dataset orientation summary
 - column role detection
 - stronger deterministic data quality signals
 - capped categorical top values
-- lightweight “next checks”
+- lightweight next-check guidance
 - Markdown report download
 - self-contained HTML report download
 - environment-backed operational settings
+- avoid charts, correlations, dashboards, and exploratory workflows
 
-Operational settings should cover:
-- max upload/object size
-- large-file warning threshold
-- random sample row count
-- head/tail row count
-- sample value count
-- text truncation length
-- top-values cap
-- CSV schema inference row count
-- S3 download timeout
+---
 
-Explicitly deferred from 0.4.0:
+### 0.4.1 — Current Version / Demo Readiness Patch
+
+This patch keeps the 0.4.0 triage behavior unchanged while tightening the public demo surface.
+
+Goal:
+
+> Make the existing triage workflow safer and cleaner to share.
+
+Committed scope:
+- render cycled sample rows without assigning uploaded values through `innerHTML`
+- add social preview metadata for shared app links
+- update package, lockfile, README, changelog, PRD, and example report versions
+
+Explicitly deferred from 0.4.1:
 - JSON export
 - schema comparison
 - larger-file/streaming performance work
@@ -79,21 +62,17 @@ Explicitly deferred from 0.4.0:
 
 Implementation blocks:
 1. Lock this PRD scope.
-2. Add central operational settings.
-3. Introduce a structured profile/report model.
-4. Add column roles and stronger quality signals.
-5. Add orientation summary, top values, and next checks.
-6. Add Markdown and HTML report downloads.
-7. Prepare the 0.4.0 release.
+2. Remove the sample cycling `innerHTML` sink.
+3. Add social preview metadata.
+4. Update versioned release documentation.
+5. Prepare the 0.4.1 release.
 
 Acceptance details:
-- column roles are deterministic hints, not authoritative schema labels
-- top values are capped and shown only where concise enough to support triage
-- orientation and next checks are generated from the same profile model as the rendered page
-- Markdown and HTML downloads are human-readable reports, not JSON data exports
-- downloaded HTML is self-contained and does not rely on external assets or JavaScript
+- sample cycling preserves text rendering for uploaded dataset values
+- social metadata does not add external assets or scripts
+- patch release metadata is synchronized across package files and docs
 
-This version should improve guidance and signal quality without adding full EDA behavior or persistence.
+This version should improve demo readiness without adding full EDA behavior, persistence, or new workflows.
 
 ---
 

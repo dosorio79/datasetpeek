@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project uses semantic versioning tags.
 
+## [0.4.1] - 2026-08-18
+
+### Fixed
+- Render cycled sample rows with DOM text nodes instead of `innerHTML`, preserving escaping for uploaded dataset values.
+
+### Changed
+- Added social preview metadata for public app links.
+- Updated release metadata and docs for the 0.4.1 patch release.
+
 ## [0.4.0] - 2026-05-23
 
 ### Added

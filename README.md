@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/dosorio79/datasetpeek/actions/workflows/ci.yml/badge.svg)](https://github.com/dosorio79/datasetpeek/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.4.0-informational)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.1-informational)](CHANGELOG.md)
 [![Python](https://img.shields.io/badge/python-3.12+-blue)](https://www.python.org/)
 
 Fast, minimal profiler for CSV and Parquet files.
@@ -18,6 +18,7 @@ DatasetPeek is a small server-rendered app built with Robyn, Polars, and Jinja2.
 - Column role hints, quality signals, capped top values, and numeric summaries.
 - Random sample cycling plus head and tail previews.
 - Markdown and standalone HTML report downloads generated from the in-memory profile.
+- Demo-friendly social preview metadata for shared app links.
 
 ## Setup
 
