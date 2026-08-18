@@ -109,6 +109,14 @@ def test_profile_adds_roles_top_values_orientation_reports(monkeypatch):
     assert "Sample rows" not in profile["html_report"]
 
 
+def test_sample_cycling_does_not_render_uploaded_values_with_inner_html():
+    template_source = (Path(__file__).parents[1] / "app" / "templates" / "home.html").read_text(encoding="utf-8")
+
+    assert "sampleTableHead.innerHTML" not in template_source
+    assert "sampleTableBody.innerHTML" not in template_source
+    assert "textContent = row[column] ?? \"\"" in template_source
+
+
 def test_structured_profile_is_report_source():
     uploaded_file = UploadedFile(
         filename="sample_profile.csv",
@@ -405,6 +413,8 @@ def test_home_renders_help_menu():
     response = client.get("/")
 
     assert response.status_code == 200
+    assert 'meta property="og:title" content="DatasetPeek"' in response.text
+    assert "https://raw.githubusercontent.com/dosorio79/datasetpeek/master/app/img/datasetpeek-logo.png" in response.text
     assert "Analyze dataset" in response.text
     assert "Choose a local CSV/Parquet file or a configured S3-compatible object." in response.text
     assert 'name="source_mode" value="file" checked' in response.text

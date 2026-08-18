@@ -2,7 +2,7 @@
 
 {% block content %}
   <section class="hero">
-    <img src="/static/logo.png?v=3" alt="DatasetPeek logo" class="brand-logo">
+    <img src="/static/logo.png?v=4" alt="DatasetPeek logo" class="brand-logo">
   </section>
 
   <section class="panel source-picker">
@@ -455,10 +455,26 @@
         if (!columns.length) {
           return;
         }
-        sampleTableHead.innerHTML = columns.map((column) => `<th>${column}</th>`).join("");
-        sampleTableBody.innerHTML = activeSet.rows
-          .map((row) => `<tr>${columns.map((column) => `<td>${row[column] ?? ""}</td>`).join("")}</tr>`)
-          .join("");
+        sampleTableHead.replaceChildren(
+          ...columns.map((column) => {
+            const headerCell = document.createElement("th");
+            headerCell.textContent = column;
+            return headerCell;
+          })
+        );
+        sampleTableBody.replaceChildren(
+          ...activeSet.rows.map((row) => {
+            const tableRow = document.createElement("tr");
+            tableRow.replaceChildren(
+              ...columns.map((column) => {
+                const cell = document.createElement("td");
+                cell.textContent = row[column] ?? "";
+                return cell;
+              })
+            );
+            return tableRow;
+          })
+        );
       };
 
       const syncSubmit = () => {
