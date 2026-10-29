@@ -407,6 +407,42 @@ def test_routes_render_profile_and_sample_sets():
     assert "Boolean disguised as string" in analyze_response.text
 
 
+def test_routes_render_profile_json_download_and_privacy_disclosure():
+    client = RobynClient(create_app())
+    csv_bytes = (FIXTURE_DIR / "sample_profile.csv").read_bytes()
+
+    response = client.post(
+        "/analyze",
+        files={"dataset": {"filename": "sample_profile.csv", "content": csv_bytes}},
+    )
+
+    assert response.status_code == 200
+    assert 'id="download-json"' in response.text
+    assert "Export JSON" in response.text
+    assert "top-value" in response.text.lower()
+    assert 'id="profile-json-data"' in response.text
+    assert "schema_version" in response.text
+    assert "1.0.0" in response.text
+    assert "sample_rows" not in response.text
+    assert "head_rows" not in response.text
+    assert "tail_rows" not in response.text
+    assert "sample_values" not in response.text
+    assert '"profile-model.json"' in response.text
+
+
+def test_upload_first_and_error_states_do_not_offer_json_download():
+    client = RobynClient(create_app())
+
+    home = client.get("/")
+    error = client.post("/analyze", files={"dataset": {"filename": "bad.txt", "content": b"bad"}})
+
+    assert home.status_code == 200
+    assert error.status_code == 200
+    assert 'id="download-json"' not in home.text
+    assert 'id="download-json"' not in error.text
+    assert "Unsupported file type" in error.text
+
+
 def test_route_analyzes_s3_uri(monkeypatch):
     client = RobynClient(create_app())
     csv_bytes = (FIXTURE_DIR / "sample_profile.csv").read_bytes()

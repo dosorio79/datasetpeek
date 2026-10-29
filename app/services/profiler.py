@@ -12,6 +12,7 @@ import polars as pl
 
 from app.services.file_reader import CSV_INCONSISTENT_ROWS_WARNING, UploadedFile
 from app.services.heuristics import detect_column_role, detect_column_signals
+from app.services.profile_export import serialize_profile_json
 from app.services.profile_model import (
     ColumnProfile,
     ColumnSignal,
@@ -41,6 +42,7 @@ def empty_view_model(*, error_message: str | None = None) -> dict[str, Any]:
         "next_checks": [],
         "markdown_report": "",
         "html_report": "",
+        "profile_json": "",
         "sample_rows": [],
         "sample_sets": [],
         "sample_columns": [],
@@ -98,6 +100,10 @@ def build_profile_view_model(
         "next_checks": profile.next_checks,
         "markdown_report": profile.markdown_report,
         "html_report": profile.html_report,
+        "profile_json": serialize_profile_json(
+            profile,
+            datasetpeek_version=_datasetpeek_version(),
+        ),
         "sample_rows": profile.sample_rows,
         "sample_sets": [{"label": sample.label, "rows": sample.rows} for sample in profile.sample_sets],
         "sample_columns": profile.sample_columns,
