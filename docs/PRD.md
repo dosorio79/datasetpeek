@@ -76,24 +76,29 @@ This version should improve demo readiness without adding full EDA behavior, per
 
 ---
 
-### 0.5.0 — Model Export
+### 0.5.0 — Profile Model JSON (Implemented, Pending Release)
 
-The following version should make DatasetPeek profiles portable for automation, review, and downstream tooling without exporting raw dataset rows.
+This release adds the profile-model JSON export. The implementation is complete;
+package and release metadata will be updated when 0.5.0 ships. Its design is
+documented in
+[the profile-model JSON spec](superpowers/specs/2026-10-29-profile-model-json-design.md);
+implementation planning followed review and approval of that spec.
 
 Goal:
 
 > Give users a compact, versioned profile model they can pass to other tools.
 
-Committed scope:
+Planned scope:
 - downloadable `profile-model.json`
-- explicit `schema_version`
+- explicit `schema_version` and DatasetPeek version metadata
 - file summary
 - column names, dtypes, inferred roles, completeness, and uniqueness
 - deterministic signals
 - capped top values
 - orientation summary
 - next checks
-- report metadata such as DatasetPeek version and generated timestamp
+- UTC generation timestamp
+- numeric metrics represented as JSON numbers
 
 Explicitly excluded from 0.5.0:
 - raw data export
@@ -105,8 +110,11 @@ Explicitly excluded from 0.5.0:
 Implementation notes:
 - generate JSON from the same structured profile model used by 0.4.0 reports
 - treat the JSON shape as a versioned contract
-- keep the export deterministic and compact
+- keep profile content deterministic and compact; the generation timestamp is
+  expected to differ between exports
 - avoid exposing internal template or view-model fields
+- exclude preview rows and per-column sample values; capped top-value strings
+  are included and may contain dataset content
 
 This version should make the 0.4.0 triage model reusable without turning DatasetPeek into a data extraction or persistence tool.
 
@@ -155,7 +163,7 @@ Existing tools:
 
 ---
 
-## 6. 0.3.x Current Scope
+## 6. Current Product Behavior (0.4.1)
 
 ### Input
 - Upload:
@@ -457,9 +465,8 @@ df.sample(n=10, seed=45)
 
 ---
 
-## 16. Future Extensions
+## 16. Later Candidate Extensions
 
-- versioned profile-model JSON export
 - schema comparison from saved `profile-model.json` exports as a natural 0.6.0 candidate
 - larger-file/streaming performance  
 - YAML/settings-file support  

@@ -464,6 +464,20 @@ def test_route_analyzes_s3_uri(monkeypatch):
     assert "Column Overview" in response.text
 
 
+def test_readme_documents_profile_json_export_contract():
+    repository_root = Path(__file__).parents[1]
+    readme = (repository_root / "README.md").read_text(encoding="utf-8")
+    prd = (repository_root / "docs" / "PRD.md").read_text(encoding="utf-8")
+
+    assert "profile-model.json" in readme
+    assert "schema_version" in readme
+    assert "top values" in readme.lower()
+    assert "dataset content" in readme.lower()
+    assert "0.4.1" in prd
+    assert "0.5.0" in prd
+    assert "superpowers/specs/2026-10-29-profile-model-json-design.md" in prd
+
+
 def test_get_analyze_redirects_to_home():
     client = RobynClient(create_app())
 

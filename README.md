@@ -18,6 +18,7 @@ DatasetPeek is a small server-rendered app built with Robyn, Polars, and Jinja2.
 - Column role hints, quality signals, capped top values, and numeric summaries.
 - Random sample cycling plus head and tail previews.
 - Markdown and standalone HTML report downloads generated from the in-memory profile.
+- Versioned `profile-model.json` export for downstream tools and automation.
 - Demo-friendly social preview metadata for shared app links.
 
 ## Setup
@@ -85,6 +86,25 @@ DatasetPeek reads operational settings from environment variables at runtime:
 | `DATASETPEEK_TOP_VALUES_LIMIT` | `5` | Maximum top values shown for compact categorical/flag fields. |
 | `DATASETPEEK_CSV_INFER_SCHEMA_ROWS` | `5000` | Number of CSV rows Polars scans for schema inference. |
 | `DATASETPEEK_S3_DOWNLOAD_TIMEOUT_SECONDS` | `30` | Timeout for S3-compatible object downloads. |
+
+## Profile Model JSON
+
+The results page offers an **Export JSON** download alongside the Markdown and
+HTML reports. The downloaded `profile-model.json` is a compact, versioned
+contract for downstream tooling:
+
+- `schema_version` identifies the export schema independently of the app version.
+- File summary, columns, inferred roles, ratios, capped top values, numeric
+  summaries, signals, orientation, and next checks are included.
+- Ratios are JSON numbers in the range `0`–`1`; undefined numeric statistics are
+  `null`.
+- Preview rows, head/tail rows, and per-column sample values are excluded.
+- Capped top values are strings from the dataset, so the export may contain
+  dataset content. Review the file before sharing it.
+- `metadata.generated_at` records when the export was generated.
+
+See [`docs/superpowers/specs/2026-10-29-profile-model-json-design.md`](docs/superpowers/specs/2026-10-29-profile-model-json-design.md)
+for the full schema and compatibility rules.
 
 ## Test
 
