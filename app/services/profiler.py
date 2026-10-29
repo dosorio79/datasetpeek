@@ -4,6 +4,7 @@ from dataclasses import replace
 from html import escape
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
+import math
 import tomllib
 from typing import Any
 
@@ -86,10 +87,10 @@ def build_profile_view_model(
         "numeric_columns": [
             {
                 "name": column.name,
-                "min": column.min,
-                "max": column.max,
-                "mean": column.mean,
-                "median": column.median,
+                "min": _format_value(column.min),
+                "max": _format_value(column.max),
+                "mean": _format_value(column.mean),
+                "median": _format_value(column.median),
             }
             for column in profile.numeric_columns
         ],
@@ -142,6 +143,8 @@ def build_profile_model(
                 role=role,
                 non_null_pct=_ratio_text(row_count - missing_count, row_count),
                 missing_pct=_ratio_text(missing_count, row_count),
+                non_null_ratio=_ratio(row_count - missing_count, row_count),
+                missing_ratio=_ratio(missing_count, row_count),
                 unique_count=unique_count,
                 sample_values=sample_values,
                 top_values=_top_values(series, role=role, settings=settings),
@@ -266,6 +269,7 @@ def _top_values(series: pl.Series, *, role: str, settings: AppSettings) -> list[
                 value=_format_display_value(row[value_column], settings=settings),
                 count=count,
                 pct=_ratio_text(count, non_null_count),
+                ratio=_ratio(count, non_null_count),
             )
         )
     return top_values
@@ -399,7 +403,7 @@ def _markdown_report(profile: DatasetProfile) -> str:
     lines.extend(
         _markdown_table(
             ["Name", "Min", "Max", "Mean", "Median"],
-            [[column.name, column.min, column.max, column.mean, column.median] for column in profile.numeric_columns],
+            [[column.name, _format_value(column.min), _format_value(column.max), _format_value(column.mean), _format_value(column.median)] for column in profile.numeric_columns],
             empty="No numeric columns detected.",
         )
     )
@@ -465,7 +469,7 @@ def _html_report(profile: DatasetProfile) -> str:
             "<h2>Numeric Summary</h2>",
             _html_table(
                 ["Name", "Min", "Max", "Mean", "Median"],
-                [[column.name, column.min, column.max, column.mean, column.median] for column in profile.numeric_columns],
+                [[column.name, _format_value(column.min), _format_value(column.max), _format_value(column.mean), _format_value(column.median)] for column in profile.numeric_columns],
                 empty="No numeric columns detected.",
             ),
             "<h2>Next Checks</h2>",
@@ -520,10 +524,10 @@ def _collect_lazy_metrics(dataframe: pl.DataFrame) -> tuple[dict[str, dict[str, 
     }
     numeric_metrics = {
         column_name: {
-            "min": _format_value(summary_row[f"{column_name}__min"]),
-            "max": _format_value(summary_row[f"{column_name}__max"]),
-            "mean": _format_value(summary_row[f"{column_name}__mean"]),
-            "median": _format_value(summary_row[f"{column_name}__median"]),
+            "min": _numeric_metric(summary_row[f"{column_name}__min"]),
+            "max": _numeric_metric(summary_row[f"{column_name}__max"]),
+            "mean": _numeric_metric(summary_row[f"{column_name}__mean"]),
+            "median": _numeric_metric(summary_row[f"{column_name}__median"]),
         }
         for column_name in numeric_columns
     }
@@ -555,10 +559,24 @@ def _table_rows(dataframe: pl.DataFrame, *, settings: AppSettings) -> list[dict[
     return rows
 
 
+def _ratio(numerator: int, denominator: int) -> float:
+    if denominator == 0:
+        return 0.0
+    return numerator / denominator
+
+
 def _ratio_text(numerator: int, denominator: int) -> str:
     if denominator == 0:
         return "0.0%"
     return f"{(numerator / denominator):.1%}"
+
+
+def _numeric_metric(value: Any) -> int | float | None:
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if isinstance(value, (int, float)):
+        return value
+    return None
 
 
 def _format_value(value: Any) -> str:

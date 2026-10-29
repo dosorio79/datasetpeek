@@ -17,6 +17,7 @@ class TopValue:
     value: str
     count: int
     pct: str
+    ratio: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,6 +34,8 @@ class ColumnProfile:
     role: str
     non_null_pct: str
     missing_pct: str
+    non_null_ratio: float
+    missing_ratio: float
     unique_count: int
     sample_values: list[str]
     top_values: list[TopValue] = field(default_factory=list)
@@ -41,10 +44,10 @@ class ColumnProfile:
 @dataclass(frozen=True, slots=True)
 class NumericColumnSummary:
     name: str
-    min: str
-    max: str
-    mean: str
-    median: str
+    min: int | float | None
+    max: int | float | None
+    mean: int | float | None
+    median: int | float | None
 
 
 @dataclass(frozen=True, slots=True)

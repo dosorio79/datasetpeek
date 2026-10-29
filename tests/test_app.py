@@ -117,6 +117,36 @@ def test_sample_cycling_does_not_render_uploaded_values_with_inner_html():
     assert "textContent = row[column] ?? \"\"" in template_source
 
 
+def test_profile_retains_raw_numeric_metrics_and_existing_report_format():
+    uploaded_file = UploadedFile(
+        filename="metrics.csv",
+        content=b"measure,group\n0.123456789,a\n0.987654321,a\n,b\n,b\n,b\n,b\n,b\n,b\n,b\n,b\n",
+        file_type="csv",
+    )
+    dataframe = pl.DataFrame(
+        {
+            "measure": [0.123456789, 0.987654321, None, None, None, None, None, None, None, None],
+            "group": ["a", "a", "b", "b", "b", "b", "b", "b", "b", "b"],
+        }
+    )
+
+    profile = build_profile_model(
+        uploaded_file=uploaded_file,
+        dataframe=dataframe,
+        read_time_ms=7,
+        warnings=[],
+    )
+    columns = {column.name: column for column in profile.columns}
+    numeric = next(column for column in profile.numeric_columns if column.name == "measure")
+
+    assert columns["measure"].non_null_ratio == 2 / 10
+    assert columns["measure"].missing_ratio == 8 / 10
+    assert columns["group"].top_values[0].ratio == 8 / 10
+    assert numeric.mean == (0.123456789 + 0.987654321) / 2
+    assert "20.0%" in profile.markdown_report
+    assert "0.556" in profile.markdown_report
+
+
 def test_structured_profile_is_report_source():
     uploaded_file = UploadedFile(
         filename="sample_profile.csv",
