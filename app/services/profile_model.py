@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from decimal import Decimal
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,10 +45,10 @@ class ColumnProfile:
 @dataclass(frozen=True, slots=True)
 class NumericColumnSummary:
     name: str
-    min: int | float | None
-    max: int | float | None
-    mean: int | float | None
-    median: int | float | None
+    min: int | float | Decimal | None
+    max: int | float | Decimal | None
+    mean: int | float | Decimal | None
+    median: int | float | Decimal | None
 
 
 @dataclass(frozen=True, slots=True)

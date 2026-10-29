@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from decimal import Decimal
 from html import escape
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-import math
 import tomllib
 from typing import Any
 
@@ -577,10 +577,8 @@ def _ratio_text(numerator: int, denominator: int) -> str:
     return f"{(numerator / denominator):.1%}"
 
 
-def _numeric_metric(value: Any) -> int | float | None:
-    if isinstance(value, float) and not math.isfinite(value):
-        return None
-    if isinstance(value, (int, float)):
+def _numeric_metric(value: Any) -> int | float | Decimal | None:
+    if isinstance(value, (int, float, Decimal)):
         return value
     return None
 

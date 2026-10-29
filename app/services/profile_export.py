@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from decimal import Decimal
 import json
+import math
 from typing import Any
 
 from app.services.profile_model import DatasetProfile
@@ -19,9 +21,11 @@ def serialize_profile_json(
 
     timestamp = generated_at or datetime.now(timezone.utc)
     if timestamp.tzinfo is None:
-        timestamp = timestamp.replace(tzinfo=timezone.utc)
-    else:
-        timestamp = timestamp.astimezone(timezone.utc)
+        raise ValueError("generated_at must be timezone-aware")
+    timestamp = timestamp.astimezone(timezone.utc)
+
+    source_name = profile.file_summary.filename
+    export_name = _export_filename(source_name)
 
     document: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
@@ -30,7 +34,7 @@ def serialize_profile_json(
             "generated_at": _isoformat_utc(timestamp),
         },
         "file": {
-            "filename": profile.file_summary.filename,
+            "filename": export_name,
             "file_type": profile.file_summary.file_type,
             "rows": profile.file_summary.rows,
             "columns": profile.file_summary.columns,
@@ -58,10 +62,10 @@ def serialize_profile_json(
         "numeric_summary": [
             {
                 "name": column.name,
-                "min": column.min,
-                "max": column.max,
-                "mean": column.mean,
-                "median": column.median,
+                "min": _json_number(column.min),
+                "max": _json_number(column.max),
+                "mean": _json_number(column.mean),
+                "median": _json_number(column.median),
             }
             for column in profile.numeric_columns
         ],
@@ -69,15 +73,42 @@ def serialize_profile_json(
             {
                 "column": signal.column,
                 "kind": signal.kind,
-                "message": signal.message,
+                "message": _sanitize(signal.message, source_name, export_name),
             }
             for signal in profile.signals
         ],
-        "orientation": list(profile.orientation),
-        "next_checks": list(profile.next_checks),
+        "orientation": [
+            _sanitize(item, source_name, export_name) for item in profile.orientation
+        ],
+        "next_checks": [
+            _sanitize(item, source_name, export_name) for item in profile.next_checks
+        ],
     }
     return json.dumps(document, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
 
 
 def _isoformat_utc(timestamp: datetime) -> str:
     return timestamp.isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _export_filename(filename: str) -> str:
+    normalized = filename.replace("\\", "/")
+    return normalized.rsplit("/", 1)[-1] or filename
+
+
+def _sanitize(text: str, source_name: str, export_name: str) -> str:
+    if source_name and source_name != export_name:
+        return text.replace(source_name, export_name)
+    return text
+
+
+def _json_number(value: int | float | Decimal | None) -> int | float | None:
+    if value is None:
+        return None
+    if isinstance(value, Decimal):
+        value = float(value)
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+    if isinstance(value, (int, float)):
+        return value
+    return None

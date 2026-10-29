@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+import csv
+from datetime import datetime
+from html.parser import HTMLParser
+import io
+import json
 from pathlib import Path
+import re
 from types import SimpleNamespace
 
 import polars as pl
@@ -11,6 +17,7 @@ from main import parse_runtime_config
 from app.main import create_app
 from app.services.file_reader import FileValidationError, UploadedFile, read_uploaded_file
 from app.services.heuristics import detect_column_signals
+from app.services.profile_export import serialize_profile_json
 from app.services.profiler import build_profile_model, build_profile_view_model
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
@@ -421,13 +428,151 @@ def test_routes_render_profile_json_download_and_privacy_disclosure():
     assert "Export JSON" in response.text
     assert "top-value" in response.text.lower()
     assert 'id="profile-json-data"' in response.text
-    assert "schema_version" in response.text
-    assert "1.0.0" in response.text
-    assert "sample_rows" not in response.text
-    assert "head_rows" not in response.text
-    assert "tail_rows" not in response.text
-    assert "sample_values" not in response.text
     assert '"profile-model.json"' in response.text
+
+    match = re.search(
+        r'<script type="application/json" id="profile-json-data">(.*?)</script>',
+        response.text,
+        re.S,
+    )
+    assert match
+    document = json.loads(json.loads(match.group(1)))
+    assert document["schema_version"] == "1.0.0"
+    assert set(document) == {
+        "schema_version",
+        "metadata",
+        "file",
+        "columns",
+        "numeric_summary",
+        "signals",
+        "orientation",
+        "next_checks",
+    }
+    assert "sample_rows" not in document
+    assert "head_rows" not in document
+    assert "tail_rows" not in document
+    assert "sample_values" not in json.dumps(document)
+
+
+class _ScriptDataCollector(HTMLParser):
+    def __init__(self, target_id):
+        super().__init__()
+        self.target_id = target_id
+        self.capturing = False
+        self.parts = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "script" and dict(attrs).get("id") == self.target_id:
+            self.capturing = True
+
+    def handle_endtag(self, tag):
+        if tag == "script":
+            self.capturing = False
+
+    def handle_data(self, data):
+        if self.capturing:
+            self.parts.append(data)
+
+
+def profile_json_from_html(html):
+    collector = _ScriptDataCollector("profile-json-data")
+    collector.feed(html)
+    return json.loads(json.loads("".join(collector.parts)))
+
+
+def test_profile_json_payload_round_trips_adversarial_values():
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["category", "note"])
+    for _ in range(8):
+        writer.writerow(["</script>", "alpha"])
+    writer.writerow(['quote " and unicode ☃', "beta"])
+    writer.writerow(["line\nbreak", "gamma"])
+    csv_bytes = buffer.getvalue().encode("utf-8")
+
+    client = RobynClient(create_app())
+    response = client.post(
+        "/analyze",
+        files={"dataset": {"filename": "adversarial.csv", "content": csv_bytes}},
+    )
+    assert response.status_code == 200
+
+    collector = _ScriptDataCollector("profile-json-data")
+    collector.feed(response.text)
+    payload = "".join(collector.parts)
+    assert "</script>" not in payload
+    document = json.loads(json.loads(payload))
+
+    dataframe = pl.read_csv(io.BytesIO(csv_bytes))
+    expected = json.loads(
+        serialize_profile_json(
+            build_profile_model(
+                uploaded_file=UploadedFile(
+                    filename="adversarial.csv",
+                    content=csv_bytes,
+                    file_type="csv",
+                ),
+                dataframe=dataframe,
+                read_time_ms=0,
+                warnings=[],
+            ),
+            datasetpeek_version=document["metadata"]["datasetpeek_version"],
+            generated_at=datetime.fromisoformat(
+                document["metadata"]["generated_at"].replace("Z", "+00:00")
+            ),
+        )
+    )
+    assert document["columns"] == expected["columns"]
+    assert document["signals"] == expected["signals"]
+    assert document["orientation"] == expected["orientation"]
+    assert document["next_checks"] == expected["next_checks"]
+
+    category = next(column for column in document["columns"] if column["name"] == "category")
+    values = [top["value"] for top in category["top_values"]]
+    assert "</script>" in values
+    assert any("☃" in value for value in values)
+    assert any("\n" in value for value in values)
+    for key in ("sample_rows", "head_rows", "tail_rows", "sample_values", "sample_sets"):
+        assert key not in document
+
+
+def test_route_exports_s3_basename(monkeypatch):
+    client = RobynClient(create_app())
+    csv_bytes = (FIXTURE_DIR / "sample_profile.csv").read_bytes()
+
+    def download_s3_object(*, bucket, key, max_bytes):
+        assert bucket == "private-bucket"
+        assert key == "private-prefix/customers.csv"
+        return csv_bytes
+
+    monkeypatch.setattr(file_reader, "download_s3_object", download_s3_object)
+
+    response = client.post(
+        "/analyze",
+        form_data={"s3_uri": "s3://private-bucket/private-prefix/customers.csv"},
+    )
+
+    assert response.status_code == 200
+    collector = _ScriptDataCollector("profile-json-data")
+    collector.feed(response.text)
+    payload = "".join(collector.parts)
+    document = json.loads(json.loads(payload))
+    assert document["file"]["filename"] == "customers.csv"
+    assert "private-prefix" not in payload
+    assert "s3://private-bucket" not in payload
+
+
+def test_empty_upload_does_not_offer_json_download():
+    client = RobynClient(create_app())
+
+    response = client.post(
+        "/analyze",
+        files={"dataset": {"filename": "empty.csv", "content": b""}},
+    )
+
+    assert response.status_code == 200
+    assert 'id="download-json"' not in response.text
+    assert "empty" in response.text.lower()
 
 
 def test_upload_first_and_error_states_do_not_offer_json_download():
@@ -471,10 +616,10 @@ def test_readme_documents_profile_json_export_contract():
 
     assert "profile-model.json" in readme
     assert "schema_version" in readme
+    assert "1.0.0" in readme
+    assert "basename" in readme
     assert "top values" in readme.lower()
     assert "dataset content" in readme.lower()
-    assert "0.4.1" in prd
-    assert "0.5.0" in prd
     assert "superpowers/specs/2026-10-29-profile-model-json-design.md" in prd
 
 

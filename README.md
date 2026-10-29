@@ -93,14 +93,17 @@ The results page offers an **Export JSON** download alongside the Markdown and
 HTML reports. The downloaded `profile-model.json` is a compact, versioned
 contract for downstream tooling:
 
-- `schema_version` identifies the export schema independently of the app version.
+- `schema_version` is `1.0.0` and identifies the export schema independently of
+  the app version.
 - File summary, columns, inferred roles, ratios, capped top values, numeric
   summaries, signals, orientation, and next checks are included.
+- The exported `file.filename` is the basename; S3 URIs and local paths are not
+  included.
 - Ratios are JSON numbers in the range `0`–`1`; undefined numeric statistics are
   `null`.
 - Preview rows, head/tail rows, and per-column sample values are excluded.
-- Capped top values are strings from the dataset, so the export may contain
-  dataset content. Review the file before sharing it.
+- Capped top values and signal messages can include dataset content. Review the
+  file before sharing it.
 - `metadata.generated_at` records when the export was generated.
 
 See [`docs/superpowers/specs/2026-10-29-profile-model-json-design.md`](docs/superpowers/specs/2026-10-29-profile-model-json-design.md)

@@ -89,7 +89,7 @@
         <button type="button" class="link-button" id="download-json">Export JSON</button>
       </div>
     </div>
-    <p class="result-note">JSON exports include capped top-value strings from your dataset; preview rows are excluded.</p>
+    <p class="result-note">JSON exports include capped top-value strings and signal details that may contain dataset content; preview rows are excluded.</p>
     <script type="application/json" id="markdown-report-data">{{ markdown_report | tojson }}</script>
     <script type="application/json" id="html-report-data">{{ html_report | tojson }}</script>
     <script type="application/json" id="profile-json-data">{{ profile_json | tojson }}</script>

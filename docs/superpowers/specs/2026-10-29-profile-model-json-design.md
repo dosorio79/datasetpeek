@@ -1,7 +1,7 @@
 # Profile Model JSON Export — Design Spec
 
-**Status:** Proposed for review  
-**Target release:** 0.5.0  
+**Status:** Implemented (pending release)
+**Target release:** 0.5.0
 **Date:** 2026-10-29
 
 ## Goal
@@ -79,11 +79,13 @@ Fields:
 
 - Do not include raw preview/sample rows, head/tail rows, or per-column sample
   values.
-- Include capped top-value strings as stated above. They are values from the
-  source dataset and may contain sensitive content; the UI must make this clear
-  near the export action or via concise explanatory copy.
+- Include capped top-value strings and signal messages as stated above. They may
+  contain values from the source dataset and may be sensitive; the UI must make
+  this clear near the export action or via concise explanatory copy.
 - Do not include credentials, S3 endpoint URLs, object URIs, local paths, or
-  internal view-model/template fields.
+  internal view-model/template fields. The exported filename is reduced to its
+  basename, and occurrences of the source name in orientation, next-check, and
+  signal text are replaced with that basename.
 - Keep the existing upload size limits and in-memory processing model.
 
 ## Compatibility and evolution
@@ -113,8 +115,9 @@ Fields:
 3. The export is built from the same structured profile used by the UI/reports,
    preserves column order, uses numeric JSON types and ratio units, and omits
    preview/sample rows and sample values.
-4. Capped top values remain capped and the interface discloses that their
-   strings come from the dataset.
+4. Capped top values remain capped, source URIs/paths are absent, and the
+   interface discloses that top-value strings and signal details come from the
+   dataset.
 5. Undefined numeric statistics serialize as JSON `null`; output is safe for
    strict JSON parsers (no NaN or Infinity tokens).
 6. Tests cover representative profile serialization, empty/undefined metrics,

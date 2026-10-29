@@ -5,7 +5,7 @@
 **Tech Stack:** Python 3.12, Robyn, Polars, Jinja2, pytest, browser-native JavaScript.
 **Spec:** `docs/superpowers/specs/2026-10-29-profile-model-json-design.md`
 
-**Status:** Revised for review; implementation is not authorized by this document.
+**Status:** Implemented (pending release); implementation authorized by the user request to execute this plan.
 
 ## Global Constraints
 
@@ -50,7 +50,7 @@
 - Keep integer extrema as integers. Convert Decimal statistics from numeric Parquet columns explicitly to JSON-compatible numbers, documenting possible float precision loss; map non-finite statistics to `None`.
 - `NumericColumnSummary` stores `min`, `max`, `mean`, and `median` as `int | float | None`; report renderers format these values only at presentation time.
 
-- [ ] **Step 1: Write the failing test** — add this test to `tests/test_app.py`:
+- [x] **Step 1: Write the failing test** — add this test to `tests/test_app.py`:
 
   ```python
   def test_profile_retains_raw_numeric_metrics_and_existing_report_format():
@@ -83,11 +83,11 @@
       assert "0.556" in profile.markdown_report
   ```
 
-- [ ] Add focused cases for a nullable category (top-value ratio uses non-null count), an empty typed frame, integer extrema, and Decimal Parquet metrics. Assert existing Markdown/HTML and view-model formatting remains unchanged, including undefined/non-finite presentation.
+- [x] Add focused cases for a nullable category (top-value ratio uses non-null count), an empty typed frame, integer extrema, and Decimal Parquet metrics. Assert existing Markdown/HTML and view-model formatting remains unchanged, including undefined/non-finite presentation.
 
-- [ ] **Step 2: Run it and verify it fails** — `uv run pytest tests/test_app.py::test_profile_retains_raw_numeric_metrics_and_existing_report_format -q`; expect failure because the model currently stores formatted strings and top-value percentages only.
-- [ ] **Step 3: Implement the minimal change** — add raw ratio fields to `ColumnProfile` and `TopValue`; retain current formatted fields for the existing reports. Change numeric summary values to raw numeric values or `None`, normalize non-finite values for export without silently changing existing non-finite report presentation (retain display fields if needed), and format numbers with the existing three-decimal display convention when generating Markdown/HTML and the view model. Populate these fields directly from Polars metrics; do not parse display strings.
-- [ ] **Step 4: Run focused verification** — `uv run pytest tests/test_app.py -q`; expect all existing profiler/report tests and the new precision test to pass.
+- [x] **Step 2: Run it and verify it fails** — `uv run pytest tests/test_app.py::test_profile_retains_raw_numeric_metrics_and_existing_report_format -q`; expect failure because the model currently stores formatted strings and top-value percentages only.
+- [x] **Step 3: Implement the minimal change** — add raw ratio fields to `ColumnProfile` and `TopValue`; retain current formatted fields for the existing reports. Change numeric summary values to raw numeric values or `None`, normalize non-finite values for export without silently changing existing non-finite report presentation (retain display fields if needed), and format numbers with the existing three-decimal display convention when generating Markdown/HTML and the view model. Populate these fields directly from Polars metrics; do not parse display strings.
+- [x] **Step 4: Run focused verification** — `uv run pytest tests/test_app.py -q`; expect all existing profiler/report tests and the new precision test to pass.
 
 ### Task 2: Add the Versioned JSON Serializer
 
@@ -99,7 +99,7 @@
 - `serialize_profile_json(profile: DatasetProfile, *, datasetpeek_version: str, generated_at: datetime | None = None) -> str` returns compact UTF-8-compatible JSON text. If `generated_at` is omitted, use the current UTC time; normalize an aware supplied datetime to UTC; reject naive datetimes with `ValueError` rather than depending on the host timezone.
 - The serializer emits the exact documented schema and uses `json.dumps(..., ensure_ascii=False, allow_nan=False)`.
 
-- [ ] **Step 1: Write the failing tests** — create `tests/test_profile_export.py` with a representative profile built through the public profiler API:
+- [x] **Step 1: Write the failing tests** — create `tests/test_profile_export.py` with a representative profile built through the public profiler API:
 
   ```python
   from dataclasses import replace
@@ -234,10 +234,10 @@
       }
   ```
 
-- [ ] Add tests for a non-UTC aware timestamp, naive timestamp rejection, and default UTC timestamp bounded by before/after instants. Assert exact field sets for nested objects and representative signal/orientation/next-check content. Include a literal top value `NaN` to prove strings are retained; strict parsing, not substring bans, detects invalid numeric tokens.
-- [ ] **Step 2: Run them and verify they fail** — `uv run pytest tests/test_profile_export.py -q`; expect collection failure because the serializer module does not exist.
-- [ ] **Step 3: Implement the minimal serializer** — map `DatasetProfile` to the named top-level fields in the spec. Emit ratios as fractions, top-value strings/counts/caps, numeric statistics as JSON numbers or `null`, and signal objects with `column`, `kind`, and `message`. Do not serialize warnings, samples, source metadata paths/URIs, dataclasses, or view-model dictionaries. The current S3 reader stores the full URI in `FileSummary.filename`: normalize slash and backslash separators and export only its final filename component, without changing existing UI/report filenames. Do not redact legitimate dataset strings merely because they resemble paths or URIs. Defensively map non-finite numeric statistics to `None` before strict serialization. Normalize the timestamp to UTC ISO 8601 with `Z`; use `allow_nan=False`.
-- [ ] **Step 4: Run focused verification** — `uv run pytest tests/test_profile_export.py -q`; expect all schema, privacy-boundary, timestamp, precision, cap, and strict-JSON tests to pass.
+- [x] Add tests for a non-UTC aware timestamp, naive timestamp rejection, and default UTC timestamp bounded by before/after instants. Assert exact field sets for nested objects and representative signal/orientation/next-check content. Include a literal top value `NaN` to prove strings are retained; strict parsing, not substring bans, detects invalid numeric tokens.
+- [x] **Step 2: Run them and verify they fail** — `uv run pytest tests/test_profile_export.py -q`; expect collection failure because the serializer module does not exist.
+- [x] **Step 3: Implement the minimal serializer** — map `DatasetProfile` to the named top-level fields in the spec. Emit ratios as fractions, top-value strings/counts/caps, numeric statistics as JSON numbers or `null`, and signal objects with `column`, `kind`, and `message`. Do not serialize warnings, samples, source metadata paths/URIs, dataclasses, or view-model dictionaries. The current S3 reader stores the full URI in `FileSummary.filename`: normalize slash and backslash separators and export only its final filename component, without changing existing UI/report filenames. Do not redact legitimate dataset strings merely because they resemble paths or URIs. Defensively map non-finite numeric statistics to `None` before strict serialization. Normalize the timestamp to UTC ISO 8601 with `Z`; use `allow_nan=False`.
+- [x] **Step 4: Run focused verification** — `uv run pytest tests/test_profile_export.py -q`; expect all schema, privacy-boundary, timestamp, precision, cap, and strict-JSON tests to pass.
 
 ### Task 3: Add the Results-Page JSON Download
 
@@ -250,7 +250,7 @@
 - Successful result view models include `profile_json`, generated by `serialize_profile_json` from the same `DatasetProfile` used for Markdown/HTML reports.
 - The template embeds that string as JSON data and exposes an `Export JSON` button only inside the existing `{% if has_result %}` block.
 
-- [ ] **Step 1: Write the failing tests** — add these assertions to `tests/test_app.py`:
+- [x] **Step 1: Write the failing tests** — add these assertions to `tests/test_app.py`:
 
   ```python
   def test_routes_render_profile_json_download_and_privacy_disclosure():
@@ -286,11 +286,11 @@
 
   The `.txt` upload is rejected by the existing file reader; also assert `Unsupported file type` appears in the error response.
 
-- [ ] Add a payload round-trip regression: build a category containing `</script>`, quotes, Unicode, and a newline (within the configured display cap), render `/analyze`, extract only the `profile-json-data` script using an HTML parser, and decode twice: first the Jinja-embedded JSON string, then the exported document. Assert it matches the serialized profile data, contains the expected formatted top value, contains no preview/sample fields (including `sample_sets`), and has no literal closing-script sequence inside its data element. Do not assert absence of preview data across the whole page: previews are intentional UI content.
-- [ ] Cover a successful S3 profile using the existing mocked S3 route pattern and assert its exported filename is only the basename. Cover empty upload rejection as well as unsupported extensions.
-- [ ] **Step 2: Run them and verify they fail** — `uv run pytest tests/test_app.py::test_routes_render_profile_json_download_and_privacy_disclosure tests/test_app.py::test_upload_first_and_error_states_do_not_offer_json_download -q`; expect failures because no JSON export data or control exists yet.
-- [ ] **Step 3: Implement the UI integration** — add `profile_json` to the successful view context using the serializer and current package-version helper. In `home.html`, add the button and concise disclosure that top values contain source data; embed `profile_json` via Jinja `tojson`; parse the embedded value and use the existing download helper with filename `profile-model.json` and MIME type `application/json;charset=utf-8`. Do not add an API route or expose JSON controls on empty/error states.
-- [ ] **Step 4: Run focused verification** — `uv run pytest tests/test_app.py tests/test_profile_export.py -q`; expect the existing route/report tests and new download tests to pass.
+- [x] Add a payload round-trip regression: build a category containing `</script>`, quotes, Unicode, and a newline (within the configured display cap), render `/analyze`, extract only the `profile-json-data` script using an HTML parser, and decode twice: first the Jinja-embedded JSON string, then the exported document. Assert it matches the serialized profile data, contains the expected formatted top value, contains no preview/sample fields (including `sample_sets`), and has no literal closing-script sequence inside its data element. Do not assert absence of preview data across the whole page: previews are intentional UI content.
+- [x] Cover a successful S3 profile using the existing mocked S3 route pattern and assert its exported filename is only the basename. Cover empty upload rejection as well as unsupported extensions.
+- [x] **Step 2: Run them and verify they fail** — `uv run pytest tests/test_app.py::test_routes_render_profile_json_download_and_privacy_disclosure tests/test_app.py::test_upload_first_and_error_states_do_not_offer_json_download -q`; expect failures because no JSON export data or control exists yet.
+- [x] **Step 3: Implement the UI integration** — add `profile_json` to the successful view context using the serializer and current package-version helper. In `home.html`, add the button and concise disclosure that top values contain source data; embed `profile_json` via Jinja `tojson`; parse the embedded value and use the existing download helper with filename `profile-model.json` and MIME type `application/json;charset=utf-8`. Do not add an API route or expose JSON controls on empty/error states.
+- [x] **Step 4: Run focused verification** — `uv run pytest tests/test_app.py tests/test_profile_export.py -q`; expect the existing route/report tests and new download tests to pass.
 
 ### Task 4: Update User-Facing Documentation
 
@@ -302,10 +302,10 @@
 - README describes JSON as an additional profile download, its schema version, and the top-value privacy boundary.
 - PRD marks the export as delivered only when the feature and target release metadata are actually complete; retain the spec link as the contract reference.
 
-- [ ] Update README capabilities and report-download documentation with `profile-model.json`, schema version `1.0.0`, and the top-value privacy disclosure; link to the design contract.
-- [ ] Update PRD wording to distinguish implemented functionality from a published release. Preserve unrelated pending PRD edits; do not change package versions in this task.
-- [ ] Review documentation against the implementation and spec. Do not add tests that pin prose or historical release numbers.
-- [ ] Run `git diff --check` and `make check`; inspect untracked plan/spec files separately because ordinary `git diff` does not include them.
+- [x] Update README capabilities and report-download documentation with `profile-model.json`, schema version `1.0.0`, and the top-value privacy disclosure; link to the design contract.
+- [x] Update PRD wording to distinguish implemented functionality from a published release. Preserve unrelated pending PRD edits; do not change package versions in this task.
+- [x] Review documentation against the implementation and spec. Do not add tests that pin prose or historical release numbers.
+- [x] Run `git diff --check` and `make check`; inspect untracked plan/spec files separately because ordinary `git diff` does not include them.
 
 ## Final Verification
 
@@ -316,4 +316,33 @@
 
 ## Completion Evidence
 
-Record changed files, executed checks and results, browser download evidence, and any unverified acceptance cases. Keep changes uncommitted unless the user requests commits. This plan update does not start implementation.
+- Changed: `app/services/profile_model.py`, `app/services/profiler.py`,
+  `app/services/profile_export.py`, `app/templates/home.html`,
+  `tests/test_app.py`, `tests/test_profile_export.py`, `README.md`,
+  `docs/PRD.md`, and `Makefile`.
+- `make check`: 72 passed; `py_compile` succeeded.
+- Automated coverage includes schema field sets, ratio denominators,
+  empty/integer/Decimal/non-finite metrics, basename sanitization for S3,
+  local, and Windows paths, literal `NaN` top values, timestamp
+  normalization/rejection/default, adversarial payload round-trip, S3 route
+  basename export, and empty/error states.
+- Browser download verification: passed. Uploaded
+  `tests/fixtures/sample_profile.csv` at `http://127.0.0.1:8080`, clicked
+  **Export JSON**, and saved the browser download as `profile-model.json`
+  (suggested filename `profile-model.json`, no download failure). Strict
+  parsing (rejecting `NaN`/`Infinity`) confirmed schema `1.0.0`, the eight
+  top-level keys, input column order, integer extrema and float means,
+  ratios in `[0, 1]`, and no `sample_rows`/`head_rows`/`tail_rows`/
+  `sample_values`/`sample_sets` content. The downloaded document reported the
+  installed package version `0.4.1` because release metadata is unchanged.
+- Live S3 verification: not performed; the mocked S3 route test verifies
+  basename-only export.
+- Deviations: Decimal values remain in `NumericColumnSummary` and are converted
+  in the serializer so existing report display (for example `1.10`) is
+  preserved. Non-finite values remain in the model and are normalized to
+  `null` only in the export. `Makefile` now compiles the new module.
+- The initial task commits exist on `dev`; review follow-up fixes remain
+  uncommitted.
+
+Implementation of this plan is complete pending a decision on committing the
+review follow-up fixes.
