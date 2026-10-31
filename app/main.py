@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from robyn import Robyn, Response
+from robyn import Response, Robyn
 from robyn.templating import JinjaTemplate
 
 from app.routes.home import register_home_routes
@@ -83,4 +83,6 @@ app = create_app()
 def run(*, host: str = "0.0.0.0", port: int = 8080) -> None:
     """Start the module-level app with deployment-friendly host and port values."""
 
-    app.start(host=host, port=port)
+    # Robyn's preflight port probe uses an unbounded connect_ex and can hang
+    # before the server binds. The bind itself is the authoritative check.
+    app.start(host=host, port=port, _check_port=False)

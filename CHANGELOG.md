@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project uses semantic versioning tags.
 
+## [0.5.0] - 2026-10-31
+
+### Added
+- Downloadable `profile-model.json` export with an explicit `schema_version` and DatasetPeek version metadata.
+- CI quality gates for tests, coverage, browser smoke checks, linting, formatting, typing, dependency audits, and branch policy.
+- Contributor, security, dependency-update, and branch-protection documentation.
+- Running app version shown in the page footer.
+
+### Changed
+- Hardened profile export privacy, numeric handling, file and S3 error handling, and delimiter detection with regression coverage.
+- Updated release metadata, README, PRD, changelog, lockfile, and example report versions for 0.5.0.
+
+### Fixed
+- Startup no longer hangs on Robyn's unbounded preflight port probe; the server now lets the bind report port conflicts.
+
 ## [0.4.1] - 2026-08-18
 
 ### Fixed

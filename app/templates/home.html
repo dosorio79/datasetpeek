@@ -86,10 +86,13 @@
       <div class="report-actions" aria-label="Report downloads">
         <button type="button" class="link-button" id="download-markdown">Export Markdown</button>
         <button type="button" class="link-button" id="download-html">Export HTML</button>
+        <button type="button" class="link-button" id="download-json">Export JSON</button>
       </div>
     </div>
+    <p class="result-note">JSON exports include capped top-value strings and signal details that may contain dataset content; preview rows are excluded.</p>
     <script type="application/json" id="markdown-report-data">{{ markdown_report | tojson }}</script>
     <script type="application/json" id="html-report-data">{{ html_report | tojson }}</script>
+    <script type="application/json" id="profile-json-data">{{ profile_json | tojson }}</script>
 
     <section class="panel guidance-panel">
       <div class="guidance-grid">
@@ -355,8 +358,10 @@
       const sampleTableHead = sampleTable?.querySelector("thead tr");
       const downloadMarkdown = document.getElementById("download-markdown");
       const downloadHtml = document.getElementById("download-html");
+      const downloadJson = document.getElementById("download-json");
       const markdownReport = JSON.parse(document.getElementById("markdown-report-data")?.textContent || '""');
       const htmlReport = JSON.parse(document.getElementById("html-report-data")?.textContent || '""');
+      const profileJson = JSON.parse(document.getElementById("profile-json-data")?.textContent || '""');
 
       if (!form || !fileInput || !filenameInput || !s3Input || !sourceSummary || !fileMeta || !fileType || !fileSize || submitButtons.length === 0 || analyzeLabels.length === 0 || !submitStackFile || !submitStackS3 || !trigger || !dropZone || !uploadActions || modeInputs.length === 0 || sourcePanels.length === 0) {
         return;
@@ -451,7 +456,7 @@
         }
         const activeSet = sampleSets[sampleIndex];
         sampleLabel.textContent = activeSet.label;
-        const columns = Object.keys(activeSet.rows[0] || {});
+        const columns = Array.isArray(activeSet.columns) ? activeSet.columns : Object.keys(activeSet.rows[0] || {});
         if (!columns.length) {
           return;
         }
@@ -600,6 +605,11 @@
       if (downloadHtml && htmlReport) {
         downloadHtml.addEventListener("click", () => {
           downloadText("datasetpeek-report.html", "text/html;charset=utf-8", htmlReport);
+        });
+      }
+      if (downloadJson && profileJson) {
+        downloadJson.addEventListener("click", () => {
+          downloadText("profile-model.json", "application/json;charset=utf-8", profileJson);
         });
       }
     })();

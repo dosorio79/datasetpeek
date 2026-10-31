@@ -1,17 +1,28 @@
 from __future__ import annotations
 
+import csv
+import io
+import json
+import re
+import tomllib
+from datetime import datetime
+from html.parser import HTMLParser
 from pathlib import Path
 from types import SimpleNamespace
 
 import polars as pl
+import pytest
 from robyn.testing import TestClient as RobynClient
 
+import app.main as app_main
 import app.services.file_reader as file_reader
-from main import parse_runtime_config
 from app.main import create_app
 from app.services.file_reader import FileValidationError, UploadedFile, read_uploaded_file
 from app.services.heuristics import detect_column_signals
+from app.services.profile_export import serialize_profile_json
 from app.services.profiler import build_profile_model, build_profile_view_model
+from app.services.s3_reader import S3ReadError
+from main import parse_runtime_config
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
 
@@ -101,7 +112,10 @@ def test_profile_adds_roles_top_values_orientation_reports(monkeypatch):
     assert columns["segment"]["role"] == "Category"
     assert len(columns["segment"]["top_values"]) == 2
     assert "Likely identifier columns: customer_id." in profile["orientation"]
-    assert "Confirm binary flag meaning and balance; decide whether any flag is an outcome." in profile["next_checks"]
+    assert (
+        "Confirm binary flag meaning and balance; decide whether any flag is an outcome."
+        in profile["next_checks"]
+    )
     assert "# DatasetPeek Profile Report" in profile["markdown_report"]
     assert "## Column Overview" in profile["markdown_report"]
     assert "<!doctype html>" in profile["html_report"]
@@ -110,11 +124,64 @@ def test_profile_adds_roles_top_values_orientation_reports(monkeypatch):
 
 
 def test_sample_cycling_does_not_render_uploaded_values_with_inner_html():
-    template_source = (Path(__file__).parents[1] / "app" / "templates" / "home.html").read_text(encoding="utf-8")
+    template_source = (Path(__file__).parents[1] / "app" / "templates" / "home.html").read_text(
+        encoding="utf-8"
+    )
 
     assert "sampleTableHead.innerHTML" not in template_source
     assert "sampleTableBody.innerHTML" not in template_source
-    assert "textContent = row[column] ?? \"\"" in template_source
+    assert 'textContent = row[column] ?? ""' in template_source
+
+
+def test_sample_sets_preserve_source_column_order(monkeypatch):
+    monkeypatch.setenv("DATASETPEEK_RANDOM_SAMPLE_ROWS", "10")
+    uploaded_file = UploadedFile(
+        filename="ordered.csv",
+        content=b"zeta,alpha\n",
+        file_type="csv",
+    )
+    dataframe = pl.DataFrame({"zeta": list(range(12)), "alpha": list(range(12))})
+
+    profile = build_profile_view_model(
+        uploaded_file=uploaded_file,
+        dataframe=dataframe,
+        read_time_ms=1,
+        warnings=[],
+    )
+
+    assert [sample_set["columns"] for sample_set in profile["sample_sets"]] == [
+        ["zeta", "alpha"]
+    ] * 4
+
+
+def test_profile_retains_raw_numeric_metrics_and_existing_report_format():
+    uploaded_file = UploadedFile(
+        filename="metrics.csv",
+        content=b"measure,group\n0.123456789,a\n0.987654321,a\n,b\n,b\n,b\n,b\n,b\n,b\n,b\n,b\n",
+        file_type="csv",
+    )
+    dataframe = pl.DataFrame(
+        {
+            "measure": [0.123456789, 0.987654321, None, None, None, None, None, None, None, None],
+            "group": ["a", "a", "b", "b", "b", "b", "b", "b", "b", "b"],
+        }
+    )
+
+    profile = build_profile_model(
+        uploaded_file=uploaded_file,
+        dataframe=dataframe,
+        read_time_ms=7,
+        warnings=[],
+    )
+    columns = {column.name: column for column in profile.columns}
+    numeric = next(column for column in profile.numeric_columns if column.name == "measure")
+
+    assert columns["measure"].non_null_ratio == 2 / 10
+    assert columns["measure"].missing_ratio == 8 / 10
+    assert columns["group"].top_values[0].ratio == 8 / 10
+    assert numeric.mean == (0.123456789 + 0.987654321) / 2
+    assert "20.0%" in profile.markdown_report
+    assert "0.556" in profile.markdown_report
 
 
 def test_structured_profile_is_report_source():
@@ -154,8 +221,7 @@ def test_csv_inconsistency_warning_becomes_quality_signal():
     )
 
     assert ("Dataset", "CSV inconsistency") in {
-        (signal["column"], signal["kind"])
-        for signal in profile["signals"]
+        (signal["column"], signal["kind"]) for signal in profile["signals"]
     }
     assert any("text parsing" in check for check in profile["next_checks"])
 
@@ -204,10 +270,14 @@ def test_extracts_filename_from_multipart_request_when_files_are_raw_bytes():
     csv_bytes = (FIXTURE_DIR / "sample_profile.csv").read_bytes()
     boundary = "----DatasetPeekBoundary"
     body = (
-        f"--{boundary}\r\n"
-        'Content-Disposition: form-data; name="dataset"; filename="sample_profile.csv"\r\n'
-        "Content-Type: text/csv\r\n\r\n"
-    ).encode("utf-8") + csv_bytes + f"\r\n--{boundary}--\r\n".encode("utf-8")
+        (
+            f"--{boundary}\r\n"
+            'Content-Disposition: form-data; name="dataset"; filename="sample_profile.csv"\r\n'
+            "Content-Type: text/csv\r\n\r\n"
+        ).encode()
+        + csv_bytes
+        + f"\r\n--{boundary}--\r\n".encode()
+    )
 
     request = SimpleNamespace(
         body=body,
@@ -225,10 +295,14 @@ def test_extracts_upload_from_multipart_request_when_files_are_missing():
     csv_bytes = (FIXTURE_DIR / "sample_profile.csv").read_bytes()
     boundary = "----DatasetPeekBoundary"
     body = (
-        f"--{boundary}\r\n"
-        'Content-Disposition: form-data; name="dataset"; filename="sample_profile.csv"\r\n'
-        "Content-Type: text/csv\r\n\r\n"
-    ).encode("utf-8") + csv_bytes + f"\r\n--{boundary}--\r\n".encode("utf-8")
+        (
+            f"--{boundary}\r\n"
+            'Content-Disposition: form-data; name="dataset"; filename="sample_profile.csv"\r\n'
+            "Content-Type: text/csv\r\n\r\n"
+        ).encode()
+        + csv_bytes
+        + f"\r\n--{boundary}--\r\n".encode()
+    )
     request = SimpleNamespace(
         body=body,
         headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
@@ -246,14 +320,20 @@ def test_multipart_extraction_selects_dataset_part_only():
     decoy_bytes = b"not,the,dataset\n"
     boundary = "----DatasetPeekBoundary"
     body = (
-        f"--{boundary}\r\n"
-        'Content-Disposition: form-data; name="attachment"; filename="decoy.csv"\r\n'
-        "Content-Type: text/csv\r\n\r\n"
-    ).encode("utf-8") + decoy_bytes + (
-        f"\r\n--{boundary}\r\n"
-        'Content-Disposition: form-data; name="dataset"; filename="customers.csv"\r\n'
-        "Content-Type: text/csv\r\n\r\n"
-    ).encode("utf-8") + csv_bytes + f"\r\n--{boundary}--\r\n".encode("utf-8")
+        (
+            f"--{boundary}\r\n"
+            'Content-Disposition: form-data; name="attachment"; filename="decoy.csv"\r\n'
+            "Content-Type: text/csv\r\n\r\n"
+        ).encode()
+        + decoy_bytes
+        + (
+            f"\r\n--{boundary}\r\n"
+            'Content-Disposition: form-data; name="dataset"; filename="customers.csv"\r\n'
+            "Content-Type: text/csv\r\n\r\n"
+        ).encode()
+        + csv_bytes
+        + f"\r\n--{boundary}--\r\n".encode()
+    )
     request = SimpleNamespace(
         body=body,
         headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
@@ -269,10 +349,14 @@ def test_extracts_filename_from_string_multipart_body():
     csv_bytes = (FIXTURE_DIR / "sample_profile.csv").read_bytes()
     boundary = "----DatasetPeekBoundary"
     body = (
-        f"--{boundary}\r\n"
-        'Content-Disposition: form-data; name="dataset"; filename="original_name.csv"\r\n'
-        "Content-Type: text/csv\r\n\r\n"
-    ).encode("utf-8") + csv_bytes + f"\r\n--{boundary}--\r\n".encode("utf-8")
+        (
+            f"--{boundary}\r\n"
+            'Content-Disposition: form-data; name="dataset"; filename="original_name.csv"\r\n'
+            "Content-Type: text/csv\r\n\r\n"
+        ).encode()
+        + csv_bytes
+        + f"\r\n--{boundary}--\r\n".encode()
+    )
 
     request = SimpleNamespace(
         body=body.decode("utf-8", errors="ignore"),
@@ -290,7 +374,9 @@ def test_rejects_oversized_upload(monkeypatch):
     oversized_csv = b"id,name\n" + (b"1,Alice\n" * 150000)
 
     try:
-        UploadedFile.from_request_files({"dataset": oversized_csv}, preferred_filename="customers.csv")
+        UploadedFile.from_request_files(
+            {"dataset": oversized_csv}, preferred_filename="customers.csv"
+        )
     except FileValidationError as exc:
         assert "currently supports files up to 1 MB" in str(exc)
     else:
@@ -351,6 +437,34 @@ def test_rejects_unsupported_s3_object_type(monkeypatch):
         raise AssertionError("Expected unsupported S3 object to be rejected")
 
 
+def test_s3_read_error_becomes_file_validation_error(monkeypatch):
+    def fail_download(*, bucket, key, max_bytes):
+        raise S3ReadError("S3 object not found (HTTP 404). Check the bucket name and object path.")
+
+    monkeypatch.setattr(file_reader, "download_s3_object", fail_download)
+
+    with pytest.raises(FileValidationError, match="S3 object not found") as error:
+        UploadedFile.from_s3_uri("s3://private-bucket/private-prefix/customers.csv")
+
+    assert isinstance(error.value.__cause__, S3ReadError)
+
+
+def test_route_renders_s3_error_without_export_controls(monkeypatch):
+    def fail_download(*, bucket, key, max_bytes):
+        raise S3ReadError("S3 object not found (HTTP 404). Check the bucket name and object path.")
+
+    monkeypatch.setattr(file_reader, "download_s3_object", fail_download)
+
+    response = RobynClient(create_app()).post(
+        "/analyze", form_data={"s3_uri": "s3://private-bucket/private-prefix/customers.csv"}
+    )
+
+    assert response.status_code == 200
+    assert "S3 object not found (HTTP 404)" in response.text
+    for control in ("Export Markdown", "Export HTML", "Export JSON", "Next sample", "Sample 1"):
+        assert control not in response.text
+
+
 def test_routes_render_profile_and_sample_sets():
     client = RobynClient(create_app())
     csv_bytes = (FIXTURE_DIR / "sample_profile.csv").read_bytes()
@@ -377,6 +491,184 @@ def test_routes_render_profile_and_sample_sets():
     assert "Boolean disguised as string" in analyze_response.text
 
 
+def test_routes_render_profile_json_download_and_privacy_disclosure():
+    client = RobynClient(create_app())
+    csv_bytes = (FIXTURE_DIR / "sample_profile.csv").read_bytes()
+
+    response = client.post(
+        "/analyze",
+        files={"dataset": {"filename": "sample_profile.csv", "content": csv_bytes}},
+    )
+
+    assert response.status_code == 200
+    assert 'id="download-json"' in response.text
+    assert "Export JSON" in response.text
+    assert "top-value" in response.text.lower()
+    assert 'id="profile-json-data"' in response.text
+    assert '"profile-model.json"' in response.text
+
+    match = re.search(
+        r'<script type="application/json" id="profile-json-data">(.*?)</script>',
+        response.text,
+        re.S,
+    )
+    assert match
+    document = json.loads(json.loads(match.group(1)))
+    assert document["schema_version"] == "1.0.0"
+    assert set(document) == {
+        "schema_version",
+        "metadata",
+        "file",
+        "columns",
+        "numeric_summary",
+        "signals",
+        "orientation",
+        "next_checks",
+    }
+    assert "sample_rows" not in document
+    assert "head_rows" not in document
+    assert "tail_rows" not in document
+    assert "sample_values" not in json.dumps(document)
+
+
+class _ScriptDataCollector(HTMLParser):
+    def __init__(self, target_id):
+        super().__init__()
+        self.target_id = target_id
+        self.capturing = False
+        self.parts = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "script" and dict(attrs).get("id") == self.target_id:
+            self.capturing = True
+
+    def handle_endtag(self, tag):
+        if tag == "script":
+            self.capturing = False
+
+    def handle_data(self, data):
+        if self.capturing:
+            self.parts.append(data)
+
+
+def profile_json_from_html(html):
+    collector = _ScriptDataCollector("profile-json-data")
+    collector.feed(html)
+    return json.loads(json.loads("".join(collector.parts)))
+
+
+def test_profile_json_payload_round_trips_adversarial_values():
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["category", "note"])
+    for _ in range(8):
+        writer.writerow(["</script>", "alpha"])
+    writer.writerow(['quote " and unicode ☃', "beta"])
+    writer.writerow(["line\nbreak", "gamma"])
+    csv_bytes = buffer.getvalue().encode("utf-8")
+
+    client = RobynClient(create_app())
+    response = client.post(
+        "/analyze",
+        files={"dataset": {"filename": "adversarial.csv", "content": csv_bytes}},
+    )
+    assert response.status_code == 200
+
+    collector = _ScriptDataCollector("profile-json-data")
+    collector.feed(response.text)
+    payload = "".join(collector.parts)
+    assert "</script>" not in payload
+    document = json.loads(json.loads(payload))
+
+    dataframe = pl.read_csv(io.BytesIO(csv_bytes))
+    expected = json.loads(
+        serialize_profile_json(
+            build_profile_model(
+                uploaded_file=UploadedFile(
+                    filename="adversarial.csv",
+                    content=csv_bytes,
+                    file_type="csv",
+                ),
+                dataframe=dataframe,
+                read_time_ms=0,
+                warnings=[],
+            ),
+            datasetpeek_version=document["metadata"]["datasetpeek_version"],
+            generated_at=datetime.fromisoformat(
+                document["metadata"]["generated_at"].replace("Z", "+00:00")
+            ),
+        )
+    )
+    assert document["columns"] == expected["columns"]
+    assert document["signals"] == expected["signals"]
+    assert document["orientation"] == expected["orientation"]
+    assert document["next_checks"] == expected["next_checks"]
+
+    category = next(column for column in document["columns"] if column["name"] == "category")
+    values = [top["value"] for top in category["top_values"]]
+    assert "</script>" in values
+    assert any("☃" in value for value in values)
+    assert any("\n" in value for value in values)
+    for key in ("sample_rows", "head_rows", "tail_rows", "sample_values", "sample_sets"):
+        assert key not in document
+
+
+def test_route_exports_s3_basename(monkeypatch):
+    client = RobynClient(create_app())
+    csv_bytes = (FIXTURE_DIR / "sample_profile.csv").read_bytes()
+
+    def download_s3_object(*, bucket, key, max_bytes):
+        assert bucket == "private-bucket"
+        assert key == "private-prefix/customers.csv"
+        return csv_bytes
+
+    monkeypatch.setattr(file_reader, "download_s3_object", download_s3_object)
+
+    response = client.post(
+        "/analyze",
+        form_data={"s3_uri": "s3://private-bucket/private-prefix/customers.csv"},
+    )
+
+    assert response.status_code == 200
+    collector = _ScriptDataCollector("profile-json-data")
+    collector.feed(response.text)
+    payload = "".join(collector.parts)
+    document = json.loads(json.loads(payload))
+    assert document["file"]["filename"] == "customers.csv"
+    assert "private-prefix" not in payload
+    assert "s3://private-bucket" not in payload
+
+
+def test_empty_upload_does_not_offer_json_download():
+    client = RobynClient(create_app())
+
+    response = client.post(
+        "/analyze",
+        files={"dataset": {"filename": "empty.csv", "content": b""}},
+    )
+
+    assert response.status_code == 200
+    assert 'id="download-json"' not in response.text
+    assert "empty" in response.text.lower()
+
+
+def test_upload_first_and_error_states_do_not_offer_json_download():
+    client = RobynClient(create_app())
+
+    home = client.get("/")
+    error = client.post("/analyze", files={"dataset": {"filename": "bad.txt", "content": b"bad"}})
+
+    assert home.status_code == 200
+    assert error.status_code == 200
+    for page in (home.text, error.text):
+        assert 'id="download-json"' not in page
+        assert "Export Markdown" not in page
+        assert "Export HTML" not in page
+        assert 'id="next-sample"' not in page
+        assert 'id="sample-table"' not in page
+    assert "Unsupported file type" in error.text
+
+
 def test_route_analyzes_s3_uri(monkeypatch):
     client = RobynClient(create_app())
     csv_bytes = (FIXTURE_DIR / "sample_profile.csv").read_bytes()
@@ -398,6 +690,20 @@ def test_route_analyzes_s3_uri(monkeypatch):
     assert "Column Overview" in response.text
 
 
+def test_readme_documents_profile_json_export_contract():
+    repository_root = Path(__file__).parents[1]
+    readme = (repository_root / "README.md").read_text(encoding="utf-8")
+    prd = (repository_root / "docs" / "PRD.md").read_text(encoding="utf-8")
+
+    assert "profile-model.json" in readme
+    assert "schema_version" in readme
+    assert "1.0.0" in readme
+    assert "basename" in readme
+    assert "top values" in readme.lower()
+    assert "dataset content" in readme.lower()
+    assert "superpowers/specs/2026-10-29-profile-model-json-design.md" in prd
+
+
 def test_get_analyze_redirects_to_home():
     client = RobynClient(create_app())
 
@@ -414,7 +720,10 @@ def test_home_renders_help_menu():
 
     assert response.status_code == 200
     assert 'meta property="og:title" content="DatasetPeek"' in response.text
-    assert "https://raw.githubusercontent.com/dosorio79/datasetpeek/master/app/img/datasetpeek-logo.png" in response.text
+    assert (
+        "https://raw.githubusercontent.com/dosorio79/datasetpeek/master/app/img/datasetpeek-logo.png"
+        in response.text
+    )
     assert "Analyze dataset" in response.text
     assert "Choose a local CSV/Parquet file or a configured S3-compatible object." in response.text
     assert 'name="source_mode" value="file" checked' in response.text
@@ -428,6 +737,27 @@ def test_home_renders_help_menu():
     assert "S3-compatible URI" in response.text
     assert "DATASETPEEK_S3_ENDPOINT_URL" in response.text
     assert 'id="analyze-submit"' in response.text
+
+
+def test_pages_display_package_version():
+    repository_root = Path(__file__).parents[1]
+    pyproject = tomllib.loads((repository_root / "pyproject.toml").read_text(encoding="utf-8"))
+    expected_version = f"DatasetPeek v{pyproject['project']['version']}"
+    client = RobynClient(create_app())
+
+    home = client.get("/")
+    result = client.post(
+        "/analyze",
+        files={
+            "dataset": {
+                "filename": "sample_profile.csv",
+                "content": (FIXTURE_DIR / "sample_profile.csv").read_bytes(),
+            }
+        },
+    )
+
+    assert expected_version in home.text
+    assert expected_version in result.text
 
 
 def test_health_endpoint_returns_ok():
@@ -531,3 +861,22 @@ def test_quality_signals_include_all_missing_constant_and_blank_strings():
     assert ("empty_col", "All missing") in signal_kinds
     assert ("constant_col", "Constant value") in signal_kinds
     assert ("blank_col", "Blank strings") in signal_kinds
+
+
+def test_run_skips_robyn_unbounded_port_probe(monkeypatch):
+    started = {}
+
+    class RecordingApp:
+        def start(self, **kwargs):
+            started.update(kwargs)
+
+    monkeypatch.setattr(app_main, "app", RecordingApp())
+
+    app_main.run(host="127.0.0.1", port=46123)
+
+    # Robyn's preflight connect_ex has no timeout and can hang before binding.
+    assert started == {
+        "host": "127.0.0.1",
+        "port": 46123,
+        "_check_port": False,
+    }

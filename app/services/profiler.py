@@ -1,16 +1,18 @@
 from __future__ import annotations
 
+import tomllib
 from dataclasses import replace
+from decimal import Decimal
 from html import escape
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-import tomllib
 from typing import Any
 
 import polars as pl
 
 from app.services.file_reader import CSV_INCONSISTENT_ROWS_WARNING, UploadedFile
 from app.services.heuristics import detect_column_role, detect_column_signals
+from app.services.profile_export import serialize_profile_json
 from app.services.profile_model import (
     ColumnProfile,
     ColumnSignal,
@@ -29,6 +31,7 @@ def empty_view_model(*, error_message: str | None = None) -> dict[str, Any]:
     settings = get_settings()
     return {
         "page_title": "DatasetPeek",
+        "app_version": _datasetpeek_version(),
         "settings": settings,
         "error_message": error_message,
         "file_summary": None,
@@ -40,6 +43,7 @@ def empty_view_model(*, error_message: str | None = None) -> dict[str, Any]:
         "next_checks": [],
         "markdown_report": "",
         "html_report": "",
+        "profile_json": "",
         "sample_rows": [],
         "sample_sets": [],
         "sample_columns": [],
@@ -68,9 +72,11 @@ def build_profile_view_model(
         read_time_ms=read_time_ms,
         warnings=warnings,
     )
+    app_version = _datasetpeek_version()
 
     return {
         "page_title": "DatasetPeek",
+        "app_version": app_version,
         "settings": get_settings(),
         "error_message": None,
         "file_summary": {
@@ -86,10 +92,10 @@ def build_profile_view_model(
         "numeric_columns": [
             {
                 "name": column.name,
-                "min": column.min,
-                "max": column.max,
-                "mean": column.mean,
-                "median": column.median,
+                "min": _format_value(column.min),
+                "max": _format_value(column.max),
+                "mean": _format_value(column.mean),
+                "median": _format_value(column.median),
             }
             for column in profile.numeric_columns
         ],
@@ -97,8 +103,19 @@ def build_profile_view_model(
         "next_checks": profile.next_checks,
         "markdown_report": profile.markdown_report,
         "html_report": profile.html_report,
+        "profile_json": serialize_profile_json(
+            profile,
+            datasetpeek_version=app_version,
+        ),
         "sample_rows": profile.sample_rows,
-        "sample_sets": [{"label": sample.label, "rows": sample.rows} for sample in profile.sample_sets],
+        "sample_sets": [
+            {
+                "label": sample.label,
+                "columns": profile.sample_columns,
+                "rows": sample.rows,
+            }
+            for sample in profile.sample_sets
+        ],
         "sample_columns": profile.sample_columns,
         "head_rows": profile.head_rows,
         "tail_rows": profile.tail_rows,
@@ -142,6 +159,8 @@ def build_profile_model(
                 role=role,
                 non_null_pct=_ratio_text(row_count - missing_count, row_count),
                 missing_pct=_ratio_text(missing_count, row_count),
+                non_null_ratio=_ratio(row_count - missing_count, row_count),
+                missing_ratio=_ratio(missing_count, row_count),
                 unique_count=unique_count,
                 sample_values=sample_values,
                 top_values=_top_values(series, role=role, settings=settings),
@@ -164,7 +183,9 @@ def build_profile_model(
             numeric_columns.append(NumericColumnSummary(name=series.name, **stats))
 
     sample_sets = _sample_sets(dataframe, settings=settings)
-    sample_frame = sample_sets[0]["frame"] if sample_sets else dataframe.head(settings.random_sample_rows)
+    sample_frame = (
+        sample_sets[0]["frame"] if sample_sets else dataframe.head(settings.random_sample_rows)
+    )
     formatted_sample_sets = [
         SampleSet(
             label=sample["label"],
@@ -266,6 +287,7 @@ def _top_values(series: pl.Series, *, role: str, settings: AppSettings) -> list[
                 value=_format_display_value(row[value_column], settings=settings),
                 count=count,
                 pct=_ratio_text(count, non_null_count),
+                ratio=_ratio(count, non_null_count),
             )
         )
     return top_values
@@ -285,10 +307,16 @@ def _orientation(profile: DatasetProfile) -> list[str]:
     if flags := columns_by_role.get("Binary flag"):
         items.append(f"Binary flag columns: {_name_list(flags)}.")
 
-    categorical_count = len(columns_by_role.get("Category", [])) + len(columns_by_role.get("Boolean flag", []))
-    numeric_count = len(columns_by_role.get("Numeric measure", [])) + len(columns_by_role.get("Numeric code", []))
+    categorical_count = len(columns_by_role.get("Category", [])) + len(
+        columns_by_role.get("Boolean flag", [])
+    )
+    numeric_count = len(columns_by_role.get("Numeric measure", [])) + len(
+        columns_by_role.get("Numeric code", [])
+    )
     if categorical_count or numeric_count:
-        items.append(f"Detected {categorical_count} categorical/flag columns and {numeric_count} numeric columns.")
+        items.append(
+            f"Detected {categorical_count} categorical/flag columns and {numeric_count} numeric columns."
+        )
 
     quality_signals = [
         signal
@@ -320,17 +348,30 @@ def _next_checks(profile: DatasetProfile) -> list[str]:
     if columns_by_role.get("Identifier"):
         _append_unique(checks, "Verify identifier columns are unique and stable before joins.")
     if columns_by_role.get("Binary flag"):
-        _append_unique(checks, "Confirm binary flag meaning and balance; decide whether any flag is an outcome.")
+        _append_unique(
+            checks,
+            "Confirm binary flag meaning and balance; decide whether any flag is an outcome.",
+        )
     if _has_signal(profile, {"All missing", "Mostly missing"}):
-        _append_unique(checks, "Decide whether mostly or entirely missing columns should be dropped or imputed.")
+        _append_unique(
+            checks,
+            "Decide whether mostly or entirely missing columns should be dropped or imputed.",
+        )
     if _has_signal(profile, {"Suspicious mixed types", "Blank strings"}):
         _append_unique(checks, "Clean mixed-type or blank-string columns before modeling or joins.")
     if _has_signal(profile, {"CSV inconsistency"}):
-        _append_unique(checks, "Review the CSV source rows that required text parsing before trusting inferred types.")
+        _append_unique(
+            checks,
+            "Review the CSV source rows that required text parsing before trusting inferred types.",
+        )
     if _has_signal(profile, {"High cardinality text"}):
-        _append_unique(checks, "Inspect high-cardinality text before encoding, grouping, or search use.")
+        _append_unique(
+            checks, "Inspect high-cardinality text before encoding, grouping, or search use."
+        )
     if _has_signal(profile, {"Constant value", "Low variance"}):
-        _append_unique(checks, "Review constant or low-variance columns; they may add little signal.")
+        _append_unique(
+            checks, "Review constant or low-variance columns; they may add little signal."
+        )
 
     if not checks:
         checks.append("Review inferred roles and sample rows before downstream use.")
@@ -399,7 +440,16 @@ def _markdown_report(profile: DatasetProfile) -> str:
     lines.extend(
         _markdown_table(
             ["Name", "Min", "Max", "Mean", "Median"],
-            [[column.name, column.min, column.max, column.mean, column.median] for column in profile.numeric_columns],
+            [
+                [
+                    column.name,
+                    _format_value(column.min),
+                    _format_value(column.max),
+                    _format_value(column.mean),
+                    _format_value(column.median),
+                ]
+                for column in profile.numeric_columns
+            ],
             empty="No numeric columns detected.",
         )
     )
@@ -465,7 +515,16 @@ def _html_report(profile: DatasetProfile) -> str:
             "<h2>Numeric Summary</h2>",
             _html_table(
                 ["Name", "Min", "Max", "Mean", "Median"],
-                [[column.name, column.min, column.max, column.mean, column.median] for column in profile.numeric_columns],
+                [
+                    [
+                        column.name,
+                        _format_value(column.min),
+                        _format_value(column.max),
+                        _format_value(column.mean),
+                        _format_value(column.median),
+                    ]
+                    for column in profile.numeric_columns
+                ],
                 empty="No numeric columns detected.",
             ),
             "<h2>Next Checks</h2>",
@@ -479,11 +538,15 @@ def _html_report(profile: DatasetProfile) -> str:
 def _sample_values(series: pl.Series, *, settings: AppSettings) -> list[str]:
     """Return a tiny representative value set for the column overview table."""
 
-    values = series.drop_nulls().unique(maintain_order=True).head(settings.sample_value_count).to_list()
+    values = (
+        series.drop_nulls().unique(maintain_order=True).head(settings.sample_value_count).to_list()
+    )
     return [_truncate(_format_value(value), settings=settings) for value in values]
 
 
-def _collect_lazy_metrics(dataframe: pl.DataFrame) -> tuple[dict[str, dict[str, int]], dict[str, dict[str, str]]]:
+def _collect_lazy_metrics(
+    dataframe: pl.DataFrame,
+) -> tuple[dict[str, dict[str, int]], dict[str, dict[str, int | float | Decimal | None]]]:
     # The upload is already an in-memory DataFrame, but lazy execution still helps:
     # we can batch cheap aggregates into one optimized Polars plan instead of
     # triggering a separate eager aggregation for every column inside Python.
@@ -495,7 +558,9 @@ def _collect_lazy_metrics(dataframe: pl.DataFrame) -> tuple[dict[str, dict[str, 
         summary_expressions.append(column.null_count().alias(f"{column_name}__missing"))
         summary_expressions.append(column.n_unique().alias(f"{column_name}__unique"))
 
-    numeric_columns = [series.name for series in dataframe.iter_columns() if series.dtype.is_numeric()]
+    numeric_columns = [
+        series.name for series in dataframe.iter_columns() if series.dtype.is_numeric()
+    ]
     for column_name in numeric_columns:
         column = pl.col(column_name)
         summary_expressions.extend(
@@ -520,10 +585,10 @@ def _collect_lazy_metrics(dataframe: pl.DataFrame) -> tuple[dict[str, dict[str, 
     }
     numeric_metrics = {
         column_name: {
-            "min": _format_value(summary_row[f"{column_name}__min"]),
-            "max": _format_value(summary_row[f"{column_name}__max"]),
-            "mean": _format_value(summary_row[f"{column_name}__mean"]),
-            "median": _format_value(summary_row[f"{column_name}__median"]),
+            "min": _numeric_metric(summary_row[f"{column_name}__min"]),
+            "max": _numeric_metric(summary_row[f"{column_name}__max"]),
+            "mean": _numeric_metric(summary_row[f"{column_name}__mean"]),
+            "median": _numeric_metric(summary_row[f"{column_name}__median"]),
         }
         for column_name in numeric_columns
     }
@@ -551,14 +616,31 @@ def _table_rows(dataframe: pl.DataFrame, *, settings: AppSettings) -> list[dict[
 
     rows: list[dict[str, str]] = []
     for row in dataframe.iter_rows(named=True):
-        rows.append({column: _truncate(_format_value(value), settings=settings) for column, value in row.items()})
+        rows.append(
+            {
+                column: _truncate(_format_value(value), settings=settings)
+                for column, value in row.items()
+            }
+        )
     return rows
+
+
+def _ratio(numerator: int, denominator: int) -> float:
+    if denominator == 0:
+        return 0.0
+    return numerator / denominator
 
 
 def _ratio_text(numerator: int, denominator: int) -> str:
     if denominator == 0:
         return "0.0%"
     return f"{(numerator / denominator):.1%}"
+
+
+def _numeric_metric(value: Any) -> int | float | Decimal | None:
+    if isinstance(value, (int, float, Decimal)):
+        return value
+    return None
 
 
 def _format_value(value: Any) -> str:
@@ -633,7 +715,9 @@ def _markdown_list(items: list[str]) -> list[str]:
     return [f"- {item}" for item in items]
 
 
-def _markdown_table(headers: list[str], rows: list[list[str]], *, empty: str | None = None) -> list[str]:
+def _markdown_table(
+    headers: list[str], rows: list[list[str]], *, empty: str | None = None
+) -> list[str]:
     if not rows:
         return [empty or ""]
     escaped_headers = [_markdown_cell(header) for header in headers]
@@ -661,8 +745,7 @@ def _html_table(headers: list[str], rows: list[list[str]], *, empty: str | None 
         return f"<p>{escape(empty or '')}</p>"
     head = "".join(f"<th>{escape(header)}</th>" for header in headers)
     body = "".join(
-        "<tr>" + "".join(f"<td>{escape(str(cell))}</td>" for cell in row) + "</tr>"
-        for row in rows
+        "<tr>" + "".join(f"<td>{escape(str(cell))}</td>" for cell in row) + "</tr>" for row in rows
     )
     return f"<table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>"
 

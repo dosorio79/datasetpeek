@@ -6,18 +6,15 @@ from email.parser import BytesParser
 from email.policy import default
 from io import BytesIO
 from time import perf_counter
-from typing import Any
+from typing import Any, cast
 
 import polars as pl
 
-from app.services.settings import AppSettings, get_settings
 from app.services.s3_reader import S3ReadError, download_s3_object, parse_s3_uri
-
+from app.services.settings import AppSettings, get_settings
 
 _CSV_DELIMITER_CANDIDATES = (",", ";", "\t")
-CSV_INCONSISTENT_ROWS_WARNING = (
-    "Some CSV rows had inconsistent values, so DatasetPeek read the affected data as text to continue profiling."
-)
+CSV_INCONSISTENT_ROWS_WARNING = "Some CSV rows had inconsistent values, so DatasetPeek read the affected data as text to continue profiling."
 
 
 class FileValidationError(ValueError):
@@ -40,11 +37,16 @@ class UploadedFile:
         files: Any,
         request: Any | None = None,
         preferred_filename: str | None = None,
-    ) -> "UploadedFile":
+    ) -> UploadedFile:
         """Normalize Robyn multipart inputs into a supported CSV or Parquet file."""
 
         candidate = _unwrap_uploaded_value(files)
-        filename = preferred_filename or _read_attr(candidate, "filename") or _read_attr(candidate, "name") or "upload"
+        filename = (
+            preferred_filename
+            or _read_attr(candidate, "filename")
+            or _read_attr(candidate, "name")
+            or "upload"
+        )
 
         if request is not None and (filename == "upload" or candidate is None):
             multipart_file = _extract_upload_from_multipart_request(request)
@@ -64,6 +66,7 @@ class UploadedFile:
         settings = get_settings()
         _validate_upload_size(content, settings=settings)
 
+        file_type: str | None
         lowered = filename.lower()
         if lowered.endswith(".csv"):
             file_type = "csv"
@@ -81,7 +84,7 @@ class UploadedFile:
         return cls(filename=filename, content=content, file_type=file_type)
 
     @classmethod
-    def from_s3_uri(cls, s3_uri: str) -> "UploadedFile":
+    def from_s3_uri(cls, s3_uri: str) -> UploadedFile:
         """Download an S3-compatible object into the same in-memory upload model."""
 
         try:
@@ -96,7 +99,9 @@ class UploadedFile:
 
         settings = get_settings()
         try:
-            content = download_s3_object(bucket=bucket, key=key, max_bytes=settings.max_upload_bytes)
+            content = download_s3_object(
+                bucket=bucket, key=key, max_bytes=settings.max_upload_bytes
+            )
         except S3ReadError as exc:
             raise FileValidationError(str(exc)) from exc
 
@@ -119,7 +124,7 @@ def read_uploaded_file(uploaded_file: UploadedFile) -> tuple[pl.DataFrame, int, 
             dataframe = _read_csv(uploaded_file.content, warnings, settings=settings)
         else:
             dataframe = pl.read_parquet(BytesIO(uploaded_file.content))
-    except Exception as exc:  # pragma: no cover - exact parser errors vary by dependency version
+    except Exception as exc:
         raise FileValidationError(f"Could not parse {uploaded_file.filename}: {exc}") from exc
 
     if dataframe.height == 0:
@@ -144,7 +149,9 @@ def _read_csv(content: bytes, warnings: list[str], *, settings: AppSettings) -> 
         )
     except Exception:
         if separator != ",":
-            warnings.append(f"Detected CSV delimiter {separator!r} failed to parse cleanly; falling back to comma.")
+            warnings.append(
+                f"Detected CSV delimiter {separator!r} failed to parse cleanly; falling back to comma."
+            )
             try:
                 dataframe = pl.read_csv(
                     BytesIO(content),
@@ -155,10 +162,14 @@ def _read_csv(content: bytes, warnings: list[str], *, settings: AppSettings) -> 
                 pass
 
         warnings.append(CSV_INCONSISTENT_ROWS_WARNING)
-        dataframe = pl.read_csv(BytesIO(content), separator=",", infer_schema=False, ignore_errors=True)
+        dataframe = pl.read_csv(
+            BytesIO(content), separator=",", infer_schema=False, ignore_errors=True
+        )
 
     if _looks_like_unsupported_delimiter_csv(content, dataframe, separator):
-        raise FileValidationError("Could not detect a supported CSV delimiter. Use comma, semicolon, or tab.")
+        raise FileValidationError(
+            "Could not detect a supported CSV delimiter. Use comma, semicolon, or tab."
+        )
 
     return dataframe
 
@@ -202,7 +213,9 @@ def _detect_csv_separator(content: bytes) -> tuple[str, bool]:
     return best_separator, True
 
 
-def _looks_like_unsupported_delimiter_csv(content: bytes, dataframe: pl.DataFrame, separator: str) -> bool:
+def _looks_like_unsupported_delimiter_csv(
+    content: bytes, dataframe: pl.DataFrame, separator: str
+) -> bool:
     if separator != "," or dataframe.width != 1:
         return False
 
@@ -254,13 +267,13 @@ def _read_bytes(candidate: Any) -> bytes:
     if isinstance(candidate, bytearray):
         return bytes(candidate)
     if hasattr(candidate, "content"):
-        content = getattr(candidate, "content")
+        content = candidate.content
         if isinstance(content, bytes):
             return content
         if isinstance(content, bytearray):
             return bytes(content)
     if hasattr(candidate, "body"):
-        body = getattr(candidate, "body")
+        body = candidate.body
         if isinstance(body, bytes):
             return body
         if isinstance(body, bytearray):
@@ -295,7 +308,7 @@ def _extract_upload_from_multipart_request(request: Any) -> UploadedFile | None:
         return None
 
     message = BytesParser(policy=default).parsebytes(
-        f"Content-Type: {content_type}\r\nMIME-Version: 1.0\r\n\r\n".encode("utf-8") + bytes(body)
+        f"Content-Type: {content_type}\r\nMIME-Version: 1.0\r\n\r\n".encode() + bytes(body)
     )
 
     for part in message.iter_parts():
@@ -307,7 +320,8 @@ def _extract_upload_from_multipart_request(request: Any) -> UploadedFile | None:
         if not filename:
             continue
 
-        payload = part.get_payload(decode=True) or b""
+        # decode=True returns bytes for a leaf part, or None for multipart data.
+        payload = cast(bytes, part.get_payload(decode=True) or b"")
         lowered = filename.lower()
         if lowered.endswith(".csv"):
             file_type = "csv"
@@ -332,7 +346,11 @@ def _header_value(headers: Any, key: str) -> str | None:
             return value
     if isinstance(headers, dict):
         for header_key, value in headers.items():
-            if isinstance(header_key, str) and header_key.lower() == key.lower() and isinstance(value, str):
+            if (
+                isinstance(header_key, str)
+                and header_key.lower() == key.lower()
+                and isinstance(value, str)
+            ):
                 return value
     return None
 
@@ -368,7 +386,9 @@ def _validate_upload_size(content: bytes, *, settings: AppSettings) -> None:
 
 def _raise_oversized_upload(*, settings: AppSettings) -> None:
     max_mb = settings.max_upload_mb
-    raise FileValidationError(f"Upload is too large. DatasetPeek currently supports files up to {max_mb} MB.")
+    raise FileValidationError(
+        f"Upload is too large. DatasetPeek currently supports files up to {max_mb} MB."
+    )
 
 
 def _file_type_from_filename(filename: str) -> str | None:

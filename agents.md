@@ -8,11 +8,11 @@ The goal is to keep instructions minimal, explicit, and actionable.
 
 ## Project Overview
 
-DatasetPeek is a **fast, minimal profiler for CSV and Parquet files**.
+DatasetPeek is a **fast, minimal profiler for CSV and Parquet files**, from local uploads or S3-compatible object storage.
 
 Core idea:
-- Upload a file
-- Return a **quick, high-signal overview**
+- Analyze a local file or S3-compatible object
+- Return a **quick, high-signal overview** and portable reports
 - No heavy EDA, no complex UI
 
 This is a **server-rendered app**, not a frontend-heavy application.
@@ -24,7 +24,7 @@ This is a **server-rendered app**, not a frontend-heavy application.
 - Backend: Python + Robyn
 - Data processing: Polars
 - Templating: Jinja2
-- Frontend: minimal HTML + CSS (no React)
+- Frontend: server-rendered Jinja, minimal CSS, and small amounts of vanilla JavaScript (no framework)
 
 ---
 
@@ -33,7 +33,8 @@ This is a **server-rendered app**, not a frontend-heavy application.
 - `routes/` → HTTP endpoints (Robyn)
 - `services/` → core logic (profiling, heuristics, file reading)
 - `templates/` → Jinja templates
-- `static/` → CSS only
+- `static/` → browser assets such as CSS and JavaScript
+- `app/services/profile_model.py` → structured profile model shared by the UI and reports
 
 Separation of concerns:
 - routes = orchestration
@@ -69,8 +70,8 @@ When modifying or adding code, always follow:
 - Prefer vectorized operations
 
 Sampling:
-- Always use:
-  df.sample(n=10, seed=42)
+- Preserve configured preview sizes and the deterministic sample seeds in
+  `app/services/profiler.py`; do not hard-code a separate sampling policy.
 
 ---
 
@@ -93,11 +94,8 @@ Do not add complex statistical methods.
 
 - Use Jinja templates only
 - No frontend frameworks
-- Keep layout simple:
-  - summary
-  - warnings
-  - table
-  - sample
+- Keep the single-page results layout focused on summary, signals, columns,
+  numeric summary, previews, and report downloads.
 
 Tables:
 - truncate long text
@@ -110,6 +108,9 @@ Tables:
 - Accept:
   - CSV
   - Parquet
+- Sources:
+  - local file upload
+  - S3-compatible object URI, including configured private endpoints
 
 CSV assumptions:
 - header present
@@ -127,7 +128,7 @@ Reject unsupported formats with clear error.
   - dashboards
   - authentication
   - persistence
-  - APIs beyond current scope
+  - new server API routes without an approved product requirement
 
 - Do NOT turn this into a full EDA tool
 
@@ -146,10 +147,28 @@ Reject unsupported formats with clear error.
 
 Before finishing a task:
 
+- Run `make check` (Ruff lint/format, mypy, pytest).
+- Run `make coverage` for line and branch coverage without a fail-under gate.
+- Run `make audit` for dependency changes; network is required.
+- Use uv 0.11.19 and `uv sync --locked --group dev`.
+- The default suite excludes the `browser` marker. For browser/client-side
+  changes, install the optional browser group and Chromium, then run
+  `make browser-test`; do not make Playwright a runtime dependency.
+
+  ```bash
+  uv sync --locked --group dev --group browser
+  uv run --locked --group browser playwright install chromium
+  make browser-test
+  ```
+
+- Follow [CONTRIBUTING.md](CONTRIBUTING.md): branch from `dev`, PR into `dev`;
+  the maintainer releases through same-repository `dev` → `master`.
+
 - Ensure app runs locally
 - Test with:
   - small CSV
   - small Parquet
+- For relevant changes, cover S3-compatible reads and Markdown/HTML report output.
 - Verify:
   - summary renders
   - sample renders
@@ -169,6 +188,47 @@ When implementing features:
 If unsure:
 - prefer simpler implementation
 - avoid over-engineering
+
+---
+
+## Skills and Efficient Routing
+
+Use skills when their stated conditions match the task. Load the applicable
+skill before acting, and follow its workflow and approval gates.
+
+### Route by task
+
+- **New feature, subsystem, or architectural change:** start with `brainstorming`;
+  wait for the required design approval, then use `writing-plans` before
+  implementation.
+- **Bug or unexpected behavior:** start with `systematic-debugging`; establish
+  the cause before changing code.
+- **Code changes:** use `testing` for behavior-focused tests and
+  `verification-before-completion` before claiming the work is done.
+- **Documentation:** use `documentation` when creating or updating project docs.
+- **Library, framework, SDK, API, CLI, or cloud-service questions:** use
+  `context7` for current official documentation where available.
+- **Other specialized work:** choose the skill whose description directly
+  matches the task (for example, Azure, Python, CI/CD, or browser automation).
+
+Use `using-superpowers` at the start of a conversation when available. Do not
+load unrelated skills or stack multiple process skills that prescribe the same
+step; follow the more specific workflow and include only relevant supporting
+skills.
+
+### Keep work efficient and cost-conscious
+
+- Choose the smallest sufficient approach: inspect only relevant files, make
+  the narrowest change, and run targeted checks before broader validation.
+- Avoid external research for stable, repository-local questions. Use current
+  documentation when an external API or version-specific behavior matters.
+- Do not delegate or parallelize routine, tightly coupled, or very small work.
+  Use agents or parallel calls only when tasks are genuinely independent and
+  the expected time or quality benefit outweighs coordination cost.
+- Prefer the least expensive model and tools that can reliably complete the
+  task; escalate only when complexity or uncertainty warrants it.
+- Never skip a required skill, approval gate, security check, or verification
+  step merely to save time or tokens.
 
 ---
 

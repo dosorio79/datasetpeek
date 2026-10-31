@@ -4,15 +4,14 @@ import hashlib
 import hmac
 import os
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Mapping
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
 from urllib.request import Request, urlopen
 
 from app.services.settings import get_settings
-
 
 _S3_BUCKET_NAME_PATTERN = re.compile(r"^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$")
 
@@ -88,15 +87,28 @@ def s3_client_config_from_env(environ: Mapping[str, str]) -> S3ClientConfig:
         "AWS_ENDPOINT_URL_S3",
         "AWS_S3_ENDPOINT_URL",
     )
-    access_key_id = _first_env(environ, "DATASETPEEK_S3_ACCESS_KEY_ID", "DATAPEEK_S3_ACCESS_KEY_ID", "AWS_ACCESS_KEY_ID")
+    access_key_id = _first_env(
+        environ, "DATASETPEEK_S3_ACCESS_KEY_ID", "DATAPEEK_S3_ACCESS_KEY_ID", "AWS_ACCESS_KEY_ID"
+    )
     secret_access_key = _first_env(
         environ,
         "DATASETPEEK_S3_SECRET_ACCESS_KEY",
         "DATAPEEK_S3_SECRET_ACCESS_KEY",
         "AWS_SECRET_ACCESS_KEY",
     )
-    session_token = _first_env(environ, "DATASETPEEK_S3_SESSION_TOKEN", "DATAPEEK_S3_SESSION_TOKEN", "AWS_SESSION_TOKEN")
-    region = _first_env(environ, "DATASETPEEK_S3_REGION", "DATAPEEK_S3_REGION", "AWS_REGION", "AWS_DEFAULT_REGION") or "us-east-1"
+    session_token = _first_env(
+        environ, "DATASETPEEK_S3_SESSION_TOKEN", "DATAPEEK_S3_SESSION_TOKEN", "AWS_SESSION_TOKEN"
+    )
+    region = (
+        _first_env(
+            environ,
+            "DATASETPEEK_S3_REGION",
+            "DATAPEEK_S3_REGION",
+            "AWS_REGION",
+            "AWS_DEFAULT_REGION",
+        )
+        or "us-east-1"
+    )
     force_path_style = _env_flag(
         environ,
         "DATASETPEEK_S3_FORCE_PATH_STYLE",
@@ -213,12 +225,16 @@ def _normalize_s3_endpoint_url(endpoint_url: str | None) -> str | None:
         return None
     parsed = urlparse(endpoint_url)
     if not parsed.scheme or not parsed.netloc:
-        raise S3ReadError("DATASETPEEK_S3_ENDPOINT_URL must include scheme and host, for example http://localhost:9000.")
+        raise S3ReadError(
+            "DATASETPEEK_S3_ENDPOINT_URL must include scheme and host, for example http://localhost:9000."
+        )
     return endpoint_url.rstrip("/")
 
 
 def _s3_sigv4_signing_key(secret_access_key: str, datestamp: str, region: str) -> bytes:
-    date_key = hmac.new(f"AWS4{secret_access_key}".encode("utf-8"), datestamp.encode("utf-8"), hashlib.sha256).digest()
+    date_key = hmac.new(
+        f"AWS4{secret_access_key}".encode(), datestamp.encode("utf-8"), hashlib.sha256
+    ).digest()
     region_key = hmac.new(date_key, region.encode("utf-8"), hashlib.sha256).digest()
     service_key = hmac.new(region_key, b"s3", hashlib.sha256).digest()
     return hmac.new(service_key, b"aws4_request", hashlib.sha256).digest()
