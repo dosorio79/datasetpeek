@@ -13,6 +13,7 @@ import polars as pl
 import pytest
 from robyn.testing import TestClient as RobynClient
 
+import app.main as app_main
 import app.services.file_reader as file_reader
 from app.main import create_app
 from app.services.file_reader import FileValidationError, UploadedFile, read_uploaded_file
@@ -838,3 +839,22 @@ def test_quality_signals_include_all_missing_constant_and_blank_strings():
     assert ("empty_col", "All missing") in signal_kinds
     assert ("constant_col", "Constant value") in signal_kinds
     assert ("blank_col", "Blank strings") in signal_kinds
+
+
+def test_run_skips_robyn_unbounded_port_probe(monkeypatch):
+    started = {}
+
+    class RecordingApp:
+        def start(self, **kwargs):
+            started.update(kwargs)
+
+    monkeypatch.setattr(app_main, "app", RecordingApp())
+
+    app_main.run(host="127.0.0.1", port=46123)
+
+    # Robyn's preflight connect_ex has no timeout and can hang before binding.
+    assert started == {
+        "host": "127.0.0.1",
+        "port": 46123,
+        "_check_port": False,
+    }
