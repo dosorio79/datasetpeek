@@ -456,7 +456,7 @@
         }
         const activeSet = sampleSets[sampleIndex];
         sampleLabel.textContent = activeSet.label;
-        const columns = Object.keys(activeSet.rows[0] || {});
+        const columns = Array.isArray(activeSet.columns) ? activeSet.columns : Object.keys(activeSet.rows[0] || {});
         if (!columns.length) {
           return;
         }

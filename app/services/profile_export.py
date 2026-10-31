@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from decimal import Decimal
 import json
 import math
+from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
 from app.services.profile_model import DatasetProfile
@@ -19,10 +19,10 @@ def serialize_profile_json(
 ) -> str:
     """Serialize a profile into the public profile-model JSON contract."""
 
-    timestamp = generated_at or datetime.now(timezone.utc)
+    timestamp = generated_at or datetime.now(UTC)
     if timestamp.tzinfo is None:
         raise ValueError("generated_at must be timezone-aware")
-    timestamp = timestamp.astimezone(timezone.utc)
+    timestamp = timestamp.astimezone(UTC)
 
     source_name = profile.file_summary.filename
     export_name = _export_filename(source_name)
@@ -77,12 +77,8 @@ def serialize_profile_json(
             }
             for signal in profile.signals
         ],
-        "orientation": [
-            _sanitize(item, source_name, export_name) for item in profile.orientation
-        ],
-        "next_checks": [
-            _sanitize(item, source_name, export_name) for item in profile.next_checks
-        ],
+        "orientation": [_sanitize(item, source_name, export_name) for item in profile.orientation],
+        "next_checks": [_sanitize(item, source_name, export_name) for item in profile.next_checks],
     }
     return json.dumps(document, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
 

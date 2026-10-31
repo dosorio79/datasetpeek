@@ -18,31 +18,43 @@ resource "github_branch_protection" "master" {
   repository_id = var.repository
   pattern       = "master"
 
-  # PR required before merging. Solo repo: CI gates the merge, not self-review.
+  # Fork contributors cannot merge upstream; the owner can release without self-review.
   required_pull_request_reviews {
     required_approving_review_count = 0
     dismiss_stale_reviews           = true
   }
 
-  # CI must pass (the "test" job from .github/workflows/ci.yml)
+  # Apply only after these jobs have passed on published PRs.
   required_status_checks {
     strict   = true
-    contexts = ["test"]
+    contexts = ["test", "quality", "dependency-audit", "branch-policy"]
   }
 
-  require_signed_commits = false
-  allows_force_pushes    = false
-  allows_deletions       = false
-  enforce_admins         = true # no bypassing settings
+  require_signed_commits          = false
+  allows_force_pushes             = false
+  allows_deletions                = false
+  enforce_admins                  = true # no bypassing settings
+  require_conversation_resolution = true
 }
 
-# dev: semi-open
+# dev: protected integration branch
 
 resource "github_branch_protection" "dev" {
   repository_id = var.repository
   pattern       = "dev"
 
-  # No PR requirement - direct pushes allowed
-  allows_force_pushes = false
-  allows_deletions    = true
+  required_pull_request_reviews {
+    required_approving_review_count = 0
+    dismiss_stale_reviews           = true
+  }
+
+  required_status_checks {
+    strict   = true
+    contexts = ["test", "quality", "dependency-audit", "branch-policy"]
+  }
+
+  allows_force_pushes             = false
+  allows_deletions                = false
+  enforce_admins                  = true
+  require_conversation_resolution = true
 }

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from robyn import Robyn, Response
+from robyn import Response, Robyn
 from robyn.templating import JinjaTemplate
 
 from app.routes.home import register_home_routes

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import replace
-from datetime import datetime, timedelta, timezone
-from decimal import Decimal
 import json
+from dataclasses import replace
+from datetime import UTC, datetime, timedelta, timezone
+from decimal import Decimal
 
 import polars as pl
 import pytest
@@ -37,8 +37,7 @@ def make_profile(filename="metrics.csv"):
         head_rows=[{"measure": "sample-only-secret"}],
         tail_rows=[{"measure": "sample-only-secret"}],
         columns=[
-            replace(column, sample_values=["sample-only-secret"])
-            for column in profile.columns
+            replace(column, sample_values=["sample-only-secret"]) for column in profile.columns
         ],
     )
 
@@ -46,7 +45,7 @@ def make_profile(filename="metrics.csv"):
 def test_export_json_has_versioned_numeric_schema_and_excludes_previews(monkeypatch):
     monkeypatch.setenv("DATASETPEEK_TOP_VALUES_LIMIT", "1")
     profile = make_profile()
-    timestamp = datetime(2026, 10, 29, 12, 0, tzinfo=timezone.utc)
+    timestamp = datetime(2026, 10, 29, 12, 0, tzinfo=UTC)
 
     exported = json.loads(
         serialize_profile_json(profile, datasetpeek_version="0.5.0", generated_at=timestamp)
@@ -118,7 +117,7 @@ def test_export_serializes_undefined_statistics_as_null_and_strict_json():
     text = serialize_profile_json(
         profile,
         datasetpeek_version="0.5.0",
-        generated_at=datetime(2026, 10, 29, tzinfo=timezone.utc),
+        generated_at=datetime(2026, 10, 29, tzinfo=UTC),
     )
     exported = json.loads(
         text, parse_constant=lambda token: (_ for _ in ()).throw(ValueError(token))
@@ -132,9 +131,7 @@ def test_export_serializes_undefined_statistics_as_null_and_strict_json():
 
 
 def test_top_value_ratio_uses_non_null_count():
-    dataframe = pl.DataFrame(
-        {"group": ["a", None, "a", "b", "b", None, "b", "a", None, "b"]}
-    )
+    dataframe = pl.DataFrame({"group": ["a", None, "a", "b", "b", None, "b", "a", None, "b"]})
     profile = build_profile_model(
         uploaded_file=UploadedFile(filename="nullable.csv", content=b"", file_type="csv"),
         dataframe=dataframe,
@@ -146,7 +143,7 @@ def test_top_value_ratio_uses_non_null_count():
         serialize_profile_json(
             profile,
             datasetpeek_version="0.5.0",
-            generated_at=datetime(2026, 10, 29, tzinfo=timezone.utc),
+            generated_at=datetime(2026, 10, 29, tzinfo=UTC),
         )
     )
     group = exported["columns"][0]
@@ -169,7 +166,7 @@ def test_export_keeps_integer_extrema_as_integers():
         serialize_profile_json(
             profile,
             datasetpeek_version="0.5.0",
-            generated_at=datetime(2026, 10, 29, tzinfo=timezone.utc),
+            generated_at=datetime(2026, 10, 29, tzinfo=UTC),
         )
     )
     numeric = exported["numeric_summary"][0]
@@ -208,7 +205,7 @@ def test_export_converts_decimal_parquet_statistics_to_json_numbers(tmp_path):
         serialize_profile_json(
             profile,
             datasetpeek_version="0.5.0",
-            generated_at=datetime(2026, 10, 29, tzinfo=timezone.utc),
+            generated_at=datetime(2026, 10, 29, tzinfo=UTC),
         )
     )
 
@@ -235,7 +232,7 @@ def test_export_normalizes_non_finite_statistics(value):
     text = serialize_profile_json(
         profile,
         datasetpeek_version="0.5.0",
-        generated_at=datetime(2026, 10, 29, tzinfo=timezone.utc),
+        generated_at=datetime(2026, 10, 29, tzinfo=UTC),
     )
     exported = json.loads(
         text, parse_constant=lambda token: (_ for _ in ()).throw(ValueError(token))
@@ -277,7 +274,7 @@ def test_export_exposes_only_source_basename(source):
     text = serialize_profile_json(
         profile,
         datasetpeek_version="0.5.0",
-        generated_at=datetime(2026, 10, 29, tzinfo=timezone.utc),
+        generated_at=datetime(2026, 10, 29, tzinfo=UTC),
     )
     exported = json.loads(text)
 
@@ -299,7 +296,7 @@ def test_export_retains_literal_nan_top_value():
     text = serialize_profile_json(
         profile,
         datasetpeek_version="0.5.0",
-        generated_at=datetime(2026, 10, 29, tzinfo=timezone.utc),
+        generated_at=datetime(2026, 10, 29, tzinfo=UTC),
     )
     exported = json.loads(
         text, parse_constant=lambda token: (_ for _ in ()).throw(ValueError(token))
@@ -340,9 +337,9 @@ def test_export_rejects_naive_timestamp():
 
 
 def test_export_default_timestamp_is_utc_now():
-    before = datetime.now(timezone.utc).replace(microsecond=0)
+    before = datetime.now(UTC).replace(microsecond=0)
     text = serialize_profile_json(make_profile(), datasetpeek_version="0.5.0")
-    after = datetime.now(timezone.utc) + timedelta(seconds=1)
+    after = datetime.now(UTC) + timedelta(seconds=1)
 
     stamp = datetime.fromisoformat(
         json.loads(text)["metadata"]["generated_at"].replace("Z", "+00:00")

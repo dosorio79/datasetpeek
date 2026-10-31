@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping
 
 BYTES_PER_MB = 1024 * 1024
 
@@ -43,7 +43,9 @@ def get_settings(environ: Mapping[str, str] | None = None) -> AppSettings:
 
     env = os.environ if environ is None else environ
     return AppSettings(
-        max_upload_mb=_env_positive_int(env, "DATASETPEEK_MAX_UPLOAD_MB", "DATAPEEK_MAX_UPLOAD_MB", default=100),
+        max_upload_mb=_env_positive_int(
+            env, "DATASETPEEK_MAX_UPLOAD_MB", "DATAPEEK_MAX_UPLOAD_MB", default=100
+        ),
         large_file_warning_mb=_env_positive_int(
             env,
             "DATASETPEEK_LARGE_FILE_WARNING_MB",
@@ -56,7 +58,9 @@ def get_settings(environ: Mapping[str, str] | None = None) -> AppSettings:
             "DATAPEEK_RANDOM_SAMPLE_ROWS",
             default=10,
         ),
-        head_tail_rows=_env_positive_int(env, "DATASETPEEK_HEAD_TAIL_ROWS", "DATAPEEK_HEAD_TAIL_ROWS", default=5),
+        head_tail_rows=_env_positive_int(
+            env, "DATASETPEEK_HEAD_TAIL_ROWS", "DATAPEEK_HEAD_TAIL_ROWS", default=5
+        ),
         sample_value_count=_env_positive_int(
             env,
             "DATASETPEEK_SAMPLE_VALUE_COUNT",
@@ -69,7 +73,9 @@ def get_settings(environ: Mapping[str, str] | None = None) -> AppSettings:
             "DATAPEEK_TEXT_TRUNCATE_CHARS",
             default=50,
         ),
-        top_values_limit=_env_positive_int(env, "DATASETPEEK_TOP_VALUES_LIMIT", "DATAPEEK_TOP_VALUES_LIMIT", default=5),
+        top_values_limit=_env_positive_int(
+            env, "DATASETPEEK_TOP_VALUES_LIMIT", "DATAPEEK_TOP_VALUES_LIMIT", default=5
+        ),
         csv_infer_schema_rows=_env_positive_int(
             env,
             "DATASETPEEK_CSV_INFER_SCHEMA_ROWS",

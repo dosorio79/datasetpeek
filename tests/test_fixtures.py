@@ -2,7 +2,6 @@ from pathlib import Path
 
 import polars as pl
 
-
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
@@ -73,6 +72,7 @@ def test_fixture_columns_trigger_core_profile_signals():
     assert any(value.isdigit() for value in mixed_values)
     assert any(not value.isdigit() for value in mixed_values)
 
-    opt_in_values = {str(value).lower() for value in df["opt_in_text"].drop_nulls().unique().to_list()}
+    opt_in_values = {
+        str(value).lower() for value in df["opt_in_text"].drop_nulls().unique().to_list()
+    }
     assert opt_in_values <= {"yes", "no"}
-

@@ -8,7 +8,9 @@ DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 8080
 
 
-def parse_runtime_config(argv: list[str] | None = None, environ: dict[str, str] | None = None) -> tuple[str, int]:
+def parse_runtime_config(
+    argv: list[str] | None = None, environ: dict[str, str] | None = None
+) -> tuple[str, int]:
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default=None)
     parser.add_argument("--port", type=int, default=None)
