@@ -81,15 +81,36 @@
       <article class="panel stat"><span>Columns</span><strong>{{ file_summary.columns }}</strong></article>
       <article class="panel stat"><span>Read time</span><strong>{{ file_summary.read_time_ms }} ms</strong></article>
     </section>
-    <div class="result-meta-row">
-      <p class="result-note">DatasetPeek profiles the full uploaded file or S3 object when it is within the size limit. If the object is an exported sample, these results describe that sample.</p>
-      <div class="report-actions" aria-label="Report downloads">
-        <button type="button" class="link-button" id="download-markdown">Export Markdown</button>
-        <button type="button" class="link-button" id="download-html">Export HTML</button>
-        <button type="button" class="link-button" id="download-json">Export JSON</button>
+
+    <!-- Export Panel: Grouped export options -->
+    <section class="panel export-panel" aria-label="Report exports">
+      <div class="section-heading">
+        <h2>Export</h2>
       </div>
-    </div>
-    <p class="result-note">JSON exports include capped top-value strings and signal details that may contain dataset content; preview rows are excluded.</p>
+      <div class="table-wrap">
+        <div class="export-options">
+          <button type="button" class="link-button" id="download-markdown" data-export="markdown">
+            <span class="icon">📄</span>
+            <span class="label">Export Markdown</span>
+          </button>
+          <button type="button" class="link-button" id="download-html" data-export="html">
+            <span class="icon">🌐</span>
+            <span class="label">Export HTML</span>
+          </button>
+          <button type="button" class="link-button" id="download-json" data-export="json">
+            <span class="icon">📋</span>
+            <span class="label">Export JSON</span>
+          </button>
+        </div>
+        <p class="export-note" i18n-key="export-note">
+          JSON exports include capped top-value strings and signal details that may contain dataset content; preview rows are excluded.
+        </p>
+      </div>
+    </section>
+
+    <p class="result-note" i18n-key="profiling-scope">
+      DatasetPeek profiles the full uploaded file or S3 object when it is within the size limit. If the object is an exported sample, these results describe that sample.
+    </p>
     <script type="application/json" id="markdown-report-data">{{ markdown_report | tojson }}</script>
     <script type="application/json" id="html-report-data">{{ html_report | tojson }}</script>
     <script type="application/json" id="profile-json-data">{{ profile_json | tojson }}</script>

@@ -797,6 +797,63 @@ summary {
   }
 }
 
+/* Export Panel Styles */
+.export-panel {
+  border-color: var(--highlight-border);
+  background: linear-gradient(180deg, #ffffff 0%, #f0f7ff 100%);
+}
+
+.export-panel .section-heading {
+  margin-bottom: 0.6rem;
+}
+
+.export-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.export-options .link-button {
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  background: var(--accent);
+  color: white;
+  font-size: 0.94rem;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  transition: background-color 120ms ease, box-shadow 120ms ease;
+  border: 1px solid var(--accent);
+}
+
+.export-options .link-button:hover {
+  background: #262b4e;
+  box-shadow: 0 6px 14px rgba(47, 53, 93, 0.14);
+}
+
+.export-note {
+  margin: 0.8rem 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+/* Responsive: export panel on narrow screens */
+@media (max-width: 720px) {
+  .export-panel {
+    border-width: 1px;
+  }
+
+  .export-options {
+    grid-template-columns: 1fr;
+  }
+
+  .export-options .link-button {
+    min-height: 3rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .shell,
   .brand-logo,
