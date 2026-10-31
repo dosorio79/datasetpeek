@@ -42,6 +42,13 @@ body {
   animation: shell-in 220ms ease-out;
 }
 
+.app-footer {
+  padding: 0.6rem 0.15rem 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-align: right;
+}
+
 .help-menu {
   position: absolute;
   top: 0.1rem;

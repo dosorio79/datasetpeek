@@ -1,6 +1,6 @@
 # DatasetPeek Profile Report
 
-DatasetPeek version: 0.4.1
+DatasetPeek version: 0.5.0
 
 ## File Summary
 

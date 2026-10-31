@@ -31,6 +31,7 @@ def empty_view_model(*, error_message: str | None = None) -> dict[str, Any]:
     settings = get_settings()
     return {
         "page_title": "DatasetPeek",
+        "app_version": _datasetpeek_version(),
         "settings": settings,
         "error_message": error_message,
         "file_summary": None,
@@ -71,9 +72,11 @@ def build_profile_view_model(
         read_time_ms=read_time_ms,
         warnings=warnings,
     )
+    app_version = _datasetpeek_version()
 
     return {
         "page_title": "DatasetPeek",
+        "app_version": app_version,
         "settings": get_settings(),
         "error_message": None,
         "file_summary": {
@@ -102,7 +105,7 @@ def build_profile_view_model(
         "html_report": profile.html_report,
         "profile_json": serialize_profile_json(
             profile,
-            datasetpeek_version=_datasetpeek_version(),
+            datasetpeek_version=app_version,
         ),
         "sample_rows": profile.sample_rows,
         "sample_sets": [
