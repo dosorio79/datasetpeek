@@ -111,17 +111,45 @@ for the full schema and compatibility rules.
 
 ## Test
 
-Run the test suite:
+Run the fast test suite:
 
 ```bash
 make test
 ```
 
-Run tests plus bytecode compilation checks:
+Run the local fast/quality checks (Ruff lint, format, type checks, and unit tests):
 
 ```bash
 make check
 ```
+
+Measure line and branch coverage for `app` and `main.py`:
+
+```bash
+make coverage
+```
+
+The default suite excludes the `browser` marker and collects without optional
+Playwright tooling. The Chromium journey is optional, much slower than
+`make check`, downloads a browser on first setup, and is not part of the fast
+quality command. Coverage has no fail-under threshold, does not measure
+JavaScript execution or the inline workflow policy, and reports lines and
+branches separately. The combined percentage is not line coverage.
+
+Run the real Chromium upload/download journey after installing the optional
+browser group and browser once:
+
+```bash
+uv sync --locked --group dev --group browser
+uv run --locked --group browser playwright install chromium
+make browser-test
+```
+
+On Windows without `make`, run
+`uv run --locked --group browser pytest tests/browser -m browser -q` instead.
+Browser tests start and stop their own loopback-only server and do not use
+cloud credentials or production data. CI runs them in a separate
+`browser-smoke` job; a green local run is not hosted CI evidence.
 
 ## Repo Layout
 
@@ -148,17 +176,27 @@ Makefile               Common developer commands
 ```bash
 make install   # sync dependencies
 make run       # start the Robyn app
-make test      # run pytest
-make check     # run tests and py_compile
+make test      # run pytest (browser tests excluded)
+make check     # Ruff lint/format check, mypy, pytest
+make coverage  # branch coverage report for app and main.py
+make browser-test # optional Chromium upload/download smoke test
+make audit     # dependency compatibility and known vulnerabilities (network)
 make clean     # remove pytest and Python cache files
 ```
 
 ## Repository Operations
 
-GitHub branch protection is managed with Terraform in `infra/github`.
-The current solo-maintainer policy requires PRs and the `test` CI check for `master`, without requiring a second approving reviewer.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and collaboration: branch from
+`dev`, open feature PRs into `dev`, and let the maintainer release through a
+`dev` → `master` PR. The quality/security checks are implemented locally; remote CI activation and
+collaborator protections still require publication and the documented rollout.
 
-See [docs/branch-protection-plan.md](docs/branch-protection-plan.md) for the policy and apply workflow.
+GitHub branch protection is managed with Terraform in `infra/github`.
+The prepared policy requires PRs and four checks on `dev` and `master`, with
+zero mandatory approvals. It has not been applied; see the rollout prerequisites
+below. Fork-only access keeps upstream merging under the maintainer’s control.
+
+See [docs/branch-protection-plan.md](docs/branch-protection-plan.md) for the policy and apply workflow, and [SECURITY.md](SECURITY.md) for security reporting and scan status.
 
 ## Render Deployment
 

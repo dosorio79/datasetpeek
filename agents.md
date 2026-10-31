@@ -147,6 +147,23 @@ Reject unsupported formats with clear error.
 
 Before finishing a task:
 
+- Run `make check` (Ruff lint/format, mypy, pytest).
+- Run `make coverage` for line and branch coverage without a fail-under gate.
+- Run `make audit` for dependency changes; network is required.
+- Use uv 0.11.19 and `uv sync --locked --group dev`.
+- The default suite excludes the `browser` marker. For browser/client-side
+  changes, install the optional browser group and Chromium, then run
+  `make browser-test`; do not make Playwright a runtime dependency.
+
+  ```bash
+  uv sync --locked --group dev --group browser
+  uv run --locked --group browser playwright install chromium
+  make browser-test
+  ```
+
+- Follow [CONTRIBUTING.md](CONTRIBUTING.md): branch from `dev`, PR into `dev`;
+  the maintainer releases through same-repository `dev` → `master`.
+
 - Ensure app runs locally
 - Test with:
   - small CSV

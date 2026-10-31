@@ -46,7 +46,6 @@ def detect_column_signals(
         return [_signal(column_name, "All missing", "No non-null values")]
 
     non_null_unique_count = non_null.n_unique()
-    unique_ratio = unique_count / row_count if row_count else 0.0
     non_null_unique_ratio = non_null_unique_count / non_null_count if non_null_count else 0.0
     non_null_ratio = non_null_count / row_count if row_count else 0.0
     missing_ratio = missing_count / row_count if row_count else 0.0
@@ -58,20 +57,38 @@ def detect_column_signals(
         signals.append(_signal(column_name, "Possible ID", f"{non_null_unique_ratio:.1%} unique"))
 
     if _is_high_cardinality_text(series, unique_count, row_count):
-        signals.append(_signal(column_name, "High cardinality text", f"{unique_count} distinct values"))
+        signals.append(
+            _signal(column_name, "High cardinality text", f"{unique_count} distinct values")
+        )
 
     is_boolean_like = _is_boolean_like(non_null)
     if is_boolean_like:
-        signals.append(_signal(column_name, "Boolean disguised as string", "Values resemble yes/no, true/false, or 0/1"))
+        signals.append(
+            _signal(
+                column_name,
+                "Boolean disguised as string",
+                "Values resemble yes/no, true/false, or 0/1",
+            )
+        )
 
     if _has_blank_strings(non_null):
-        signals.append(_signal(column_name, "Blank strings", "Contains empty or whitespace-only string values"))
+        signals.append(
+            _signal(column_name, "Blank strings", "Contains empty or whitespace-only string values")
+        )
 
     if _has_mixed_types(non_null):
-        signals.append(_signal(column_name, "Suspicious mixed types", "Contains both numeric-like and free-text values"))
+        signals.append(
+            _signal(
+                column_name,
+                "Suspicious mixed types",
+                "Contains both numeric-like and free-text values",
+            )
+        )
 
     has_binary_signal = False
-    if _needs_value_count_scan(unique_count=non_null_unique_count, unique_ratio=non_null_unique_ratio):
+    if _needs_value_count_scan(
+        unique_count=non_null_unique_count, unique_ratio=non_null_unique_ratio
+    ):
         value_counts = non_null.value_counts(sort=True)
         top_row = value_counts.row(0, named=True)
         top_value = top_row[series.name]
@@ -79,13 +96,27 @@ def detect_column_signals(
         top_ratio = top_frequency / non_null_count if non_null_count else 0.0
 
         if non_null_unique_count == 1:
-            signals.append(_signal(column_name, "Constant value", f"Only non-null value is {top_value!r}"))
+            signals.append(
+                _signal(column_name, "Constant value", f"Only non-null value is {top_value!r}")
+            )
 
         if top_ratio >= 0.95:
-            signals.append(_signal(column_name, "Low variance", f'{top_value!r} appears {top_ratio:.1%}'))
+            signals.append(
+                _signal(column_name, "Low variance", f"{top_value!r} appears {top_ratio:.1%}")
+            )
 
-        if non_null_unique_count == 2 and non_null_ratio >= 0.5 and _is_binary_target_domain(value_counts):
-            signals.append(_signal(column_name, "Binary / possible target", _binary_message(value_counts, non_null_count)))
+        if (
+            non_null_unique_count == 2
+            and non_null_ratio >= 0.5
+            and _is_binary_target_domain(value_counts)
+        ):
+            signals.append(
+                _signal(
+                    column_name,
+                    "Binary / possible target",
+                    _binary_message(value_counts, non_null_count),
+                )
+            )
             has_binary_signal = True
         elif value_counts.height >= 2:
             top_two = value_counts.head(2)["count"].sum()
@@ -94,11 +125,23 @@ def detect_column_signals(
                 and non_null_ratio >= 0.5
                 and _is_binary_target_domain(value_counts.head(2))
             ):
-                signals.append(_signal(column_name, "Binary / possible target", _binary_message(value_counts.head(2), non_null_count)))
+                signals.append(
+                    _signal(
+                        column_name,
+                        "Binary / possible target",
+                        _binary_message(value_counts.head(2), non_null_count),
+                    )
+                )
                 has_binary_signal = True
 
-    if not has_binary_signal and not is_boolean_like and _is_likely_categorical(series, unique_count, row_count):
-        signals.append(_signal(column_name, "Likely categorical", f"{unique_count} distinct values"))
+    if (
+        not has_binary_signal
+        and not is_boolean_like
+        and _is_likely_categorical(series, unique_count, row_count)
+    ):
+        signals.append(
+            _signal(column_name, "Likely categorical", f"{unique_count} distinct values")
+        )
 
     if not has_binary_signal and _is_numeric_discrete(
         column_name=column_name,
@@ -106,7 +149,13 @@ def detect_column_signals(
         unique_count=non_null_unique_count,
         non_null_unique_ratio=non_null_unique_ratio,
     ):
-        signals.append(_signal(column_name, "Possible numeric discrete", f"{non_null_unique_count} distinct integer values"))
+        signals.append(
+            _signal(
+                column_name,
+                "Possible numeric discrete",
+                f"{non_null_unique_count} distinct integer values",
+            )
+        )
 
     return signals
 
@@ -168,7 +217,9 @@ def _signal(column: str, kind: str, message: str) -> dict[str, str]:
     return {"column": column, "kind": kind, "message": message}
 
 
-def _looks_like_id(column_name: str, series: pl.Series, unique_ratio: float, non_null_ratio: float) -> bool:
+def _looks_like_id(
+    column_name: str, series: pl.Series, unique_ratio: float, non_null_ratio: float
+) -> bool:
     """Detect likely row or entity identifiers from names and uniqueness."""
 
     has_id_name = bool(ID_HINT_PATTERN.search(column_name.lower()))
@@ -219,7 +270,9 @@ def _is_high_cardinality_text(series: pl.Series, unique_count: int, row_count: i
 def _is_boolean_like(series: pl.Series) -> bool:
     if series.dtype != pl.String:
         return False
-    normalized = {str(value).strip().lower() for value in series.unique().to_list() if str(value).strip()}
+    normalized = {
+        str(value).strip().lower() for value in series.unique().to_list() if str(value).strip()
+    }
     return bool(normalized) and any(normalized <= candidate for candidate in BOOLEAN_SETS)
 
 

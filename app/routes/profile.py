@@ -27,7 +27,9 @@ def register_profile_routes(*, app: Robyn, templates: JinjaTemplate) -> None:
                 uploaded_file = UploadedFile.from_s3_uri(s3_uri)
             else:
                 preferred_filename = form.get("dataset_name")
-                uploaded_file = UploadedFile.from_request_files(files, request=request, preferred_filename=preferred_filename)
+                uploaded_file = UploadedFile.from_request_files(
+                    files, request=request, preferred_filename=preferred_filename
+                )
             dataframe, read_time_ms, warnings = read_uploaded_file(uploaded_file)
             context = build_profile_view_model(
                 uploaded_file=uploaded_file,

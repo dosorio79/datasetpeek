@@ -12,3 +12,16 @@ wheels/
 # Local tooling files
 .codex
 .github/agents/
+.env
+.env.*
+!.env.example
+.mypy_cache/
+.ruff_cache/
+
+# Generated test and coverage output
+.coverage
+.coverage.*
+coverage.json
+htmlcov/
+.pytest_cache/
+test-results/

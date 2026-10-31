@@ -44,3 +44,34 @@ def test_csv_rejects_unsupported_delimiter_instead_of_misprofiling():
             "pipe.csv",
             "name|score\nalice|10\nbob|20\n",
         )
+
+
+def test_csv_without_detectable_delimiter_keeps_rows():
+    frame, _, warnings = _read_csv_bytes("single.csv", "name\nalice\nbob\n")
+    assert frame.to_dicts() == [{"name": "alice"}, {"name": "bob"}]
+    assert any("could not be auto-detected" in warning for warning in warnings)
+
+
+def test_csv_tolerant_fallback_preserves_mixed_values(monkeypatch):
+    monkeypatch.setenv("DATASETPEEK_CSV_INFER_SCHEMA_ROWS", "1")
+    frame, _, warnings = _read_csv_bytes("mixed.csv", "id,value\n1,10\n2,word\n")
+    assert frame.to_dicts() == [{"id": "1", "value": "10"}, {"id": "2", "value": "word"}]
+    assert any("inconsistent values" in warning for warning in warnings)
+
+
+def test_non_comma_parse_failure_falls_back_without_losing_rows(monkeypatch):
+    import app.services.file_reader as reader
+
+    original = reader.pl.read_csv
+    monkeypatch.setattr(reader, "_detect_csv_separator", lambda content: (";", True))
+
+    def fail_detected_separator(*args, **kwargs):
+        if kwargs.get("separator") == ";":
+            raise ValueError("synthetic detected-separator failure")
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(reader.pl, "read_csv", fail_detected_separator)
+    frame, _, warnings = _read_csv_bytes("fallback.csv", "id,name\n1,alice\n2,bob\n")
+    assert frame["name"].to_list() == ["alice", "bob"]
+    assert [str(value) for value in frame["id"]] == ["1", "2"]
+    assert any("falling back to comma" in warning for warning in warnings)
