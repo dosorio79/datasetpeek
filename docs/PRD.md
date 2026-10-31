@@ -7,7 +7,7 @@
 
 **Name:** DatasetPeek  
 **Type:** Single-page web app  
-**Current version:** 0.4.1
+**Current version:** 0.5.0
 
 **Goal:**
 > Understand a dataset in seconds.
@@ -22,7 +22,7 @@
 
 ## 2. Version Roadmap
 
-### 0.4.0 — Previous Version
+### 0.4.0 — Earlier Version
 
 Deterministic triage core for local CSV/Parquet files and configured S3-compatible objects, with role hints, stronger quality signals, and portable human-readable reports.
 
@@ -39,7 +39,7 @@ Focus:
 
 ---
 
-### 0.4.1 — Current Version / Demo Readiness Patch
+### 0.4.1 — Previous Version / Demo Readiness Patch
 
 This patch keeps the 0.4.0 triage behavior unchanged while tightening the public demo surface.
 
@@ -76,11 +76,10 @@ This version should improve demo readiness without adding full EDA behavior, per
 
 ---
 
-### 0.5.0 — Profile Model JSON (Implemented, Pending Release)
+### 0.5.0 — Current Version / Profile Model JSON
 
-This release adds the profile-model JSON export. The implementation is complete;
-package and release metadata will be updated when 0.5.0 ships. Its design is
-documented in
+This release adds the profile-model JSON export. It shipped on 2026-10-31. Its
+design is documented in
 [the profile-model JSON spec](superpowers/specs/2026-10-29-profile-model-json-design.md);
 implementation planning followed review and approval of that spec.
 
@@ -88,7 +87,7 @@ Goal:
 
 > Give users a compact, versioned profile model they can pass to other tools.
 
-Planned scope:
+Shipped scope:
 - downloadable `profile-model.json`
 - explicit `schema_version` and DatasetPeek version metadata
 - file summary
@@ -99,6 +98,7 @@ Planned scope:
 - next checks
 - UTC generation timestamp
 - numeric metrics represented as JSON numbers
+- running app version shown in the page footer
 
 Explicitly excluded from 0.5.0:
 - raw data export
@@ -116,7 +116,7 @@ Implementation notes:
 - exclude preview rows and per-column sample values; capped top-value strings
   are included and may contain dataset content
 
-This version should make the 0.4.0 triage model reusable without turning DatasetPeek into a data extraction or persistence tool.
+This version makes the 0.4.0 triage model reusable without turning DatasetPeek into a data extraction or persistence tool.
 
 ---
 
@@ -163,7 +163,7 @@ Existing tools:
 
 ---
 
-## 6. Current Product Behavior (0.4.1)
+## 6. Current Product Behavior (0.5.0)
 
 ### Input
 - Upload:
@@ -273,6 +273,17 @@ For numeric columns (int + float only):
 
 ---
 
+### 7.6 Report Downloads
+
+- Markdown report for quick sharing.
+- Standalone HTML report for a portable human-readable profile.
+- Versioned `profile-model.json` for downstream tools, with
+  `schema_version` `1.0.0`.
+- JSON exports exclude preview rows and per-column sample values. Capped top
+  values and signal messages may contain dataset content.
+
+---
+
 ## 8. UX Structure
 
 ~~~
@@ -290,6 +301,7 @@ Upload
 - minimal interaction  
 - immediate rendering  
 - clean hierarchy  
+- page footer shows the running app version
 
 ---
 

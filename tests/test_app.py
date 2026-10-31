@@ -4,6 +4,7 @@ import csv
 import io
 import json
 import re
+import tomllib
 from datetime import datetime
 from html.parser import HTMLParser
 from pathlib import Path
@@ -736,6 +737,27 @@ def test_home_renders_help_menu():
     assert "S3-compatible URI" in response.text
     assert "DATASETPEEK_S3_ENDPOINT_URL" in response.text
     assert 'id="analyze-submit"' in response.text
+
+
+def test_pages_display_package_version():
+    repository_root = Path(__file__).parents[1]
+    pyproject = tomllib.loads((repository_root / "pyproject.toml").read_text(encoding="utf-8"))
+    expected_version = f"DatasetPeek v{pyproject['project']['version']}"
+    client = RobynClient(create_app())
+
+    home = client.get("/")
+    result = client.post(
+        "/analyze",
+        files={
+            "dataset": {
+                "filename": "sample_profile.csv",
+                "content": (FIXTURE_DIR / "sample_profile.csv").read_bytes(),
+            }
+        },
+    )
+
+    assert expected_version in home.text
+    assert expected_version in result.text
 
 
 def test_health_endpoint_returns_ok():
