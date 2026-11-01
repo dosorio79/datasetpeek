@@ -176,6 +176,31 @@ Before finishing a task:
 
 ---
 
+## Maintainer Release Checklist
+
+This repository uses `master` as the production branch; there is no `main`
+branch. Follow the full flow in [CONTRIBUTING.md](CONTRIBUTING.md):
+
+1. Merge feature and fix PRs into `dev` after required checks pass.
+2. Prepare the version, lockfile, changelog, README, PRD, and versioned examples
+   on a short-lived release branch from current `dev`, then merge its PR into
+   `dev`.
+3. Open the same-repository release PR from `dev` to `master`. Merge it with a
+   merge commit after the combined diff and required checks pass; never squash
+   or rebase the long-lived branches.
+4. Tag the verified `master` release merge as `vX.Y.Z` and publish the release
+   notes. Verify deployment separately when applicable.
+5. Synchronize `master` back into `dev` through a fresh
+   `chore/sync-release-*` branch and PR, merging that PR with a merge commit.
+6. Close superseded or incorrectly based release PRs and remove merged
+   short-lived remote branches. Do not close unrelated Dependabot or security
+   PRs as general cleanup.
+
+Do not push directly to protected `dev` or `master`, delete either long-lived
+branch, or treat a merged PR as proof that a deployment completed.
+
+---
+
 ## Execution Strategy for Agents
 
 When implementing features:
@@ -216,6 +241,22 @@ load unrelated skills or stack multiple process skills that prescribe the same
 step; follow the more specific workflow and include only relevant supporting
 skills.
 
+### Superpowers workflow boundary
+
+- Use the relevant Superpowers workflow for complex work: unclear product or
+  architecture decisions, multi-component changes, difficult diagnosis,
+  security-sensitive boundaries, and implementation plans with several
+  dependent steps.
+- For a complex feature, use `brainstorming` before design, `writing-plans`
+  after the design is approved, `test-driven-development` where practical,
+  and `verification-before-completion` before reporting success.
+- Skip brainstorming, formal plans, worktrees, and subagents for localized,
+  low-risk changes whose implementation is already clear. Apply the smallest
+  relevant testing and verification workflow instead.
+- Use subagents only for genuinely independent workstreams with non-overlapping
+  write surfaces. The primary agent remains responsible for integration and
+  fresh verification of the combined result.
+
 ### Keep work efficient and cost-conscious
 
 - Choose the smallest sufficient approach: inspect only relevant files, make
@@ -227,6 +268,17 @@ skills.
   the expected time or quality benefit outweighs coordination cost.
 - Prefer the least expensive model and tools that can reliably complete the
   task; escalate only when complexity or uncertainty warrants it.
+- Route mechanical, read-only, and easily checked work to a fast low-cost model;
+  use a general coding model for focused implementation and tests; reserve the
+  strongest reasoning model for architecture, ambiguous debugging, security or
+  privacy boundaries, release decisions, and independent review of high-risk
+  changes.
+- Do not split a tightly coupled task across models merely to use parallelism.
+  Account for coordination and review cost, and keep integration decisions with
+  one capable owner.
+- Independently review security-sensitive, destructive, credential, release,
+  and data-handling boundaries with a sufficiently strong model even when
+  cheaper models performed mechanical preparation.
 - Never skip a required skill, approval gate, security check, or verification
   step merely to save time or tokens.
 
