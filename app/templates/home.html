@@ -74,6 +74,32 @@
 
   {% if has_result %}
     <div class="results-stack">
+    <section class="panel export-panel" aria-labelledby="export-heading">
+      <div class="export-toolbar">
+        <h2 id="export-heading">Export reports</h2>
+        <div class="export-options">
+          <button type="button" class="secondary-button export-button" id="download-markdown" data-export="markdown" aria-label="Export Markdown">
+            <span aria-hidden="true">📄</span>
+            <span>Markdown</span>
+          </button>
+          <button type="button" class="secondary-button export-button" id="download-html" data-export="html" aria-label="Export HTML">
+            <span aria-hidden="true">🌐</span>
+            <span>HTML</span>
+          </button>
+          <button type="button" class="secondary-button export-button" id="download-json" data-export="json" aria-label="Export JSON">
+            <span aria-hidden="true">📋</span>
+            <span>JSON</span>
+          </button>
+          <span class="export-disclosure">
+            <button type="button" class="export-info" aria-label="JSON export limitations" aria-describedby="export-note">i</button>
+            <span class="export-note" id="export-note" role="tooltip" i18n-key="export-note">
+              JSON exports include capped top-value strings and signal details that may contain dataset content; preview rows are excluded.
+            </span>
+          </span>
+        </div>
+      </div>
+    </section>
+
     <section class="grid summary-grid">
       <article class="panel stat"><span>Filename</span><strong class="stat-value filename-value" title="{{ file_summary.filename }}">{{ file_summary.filename }}</strong></article>
       <article class="panel stat"><span>Type</span><strong>{{ file_summary.file_type }}</strong></article>
@@ -82,35 +108,10 @@
       <article class="panel stat"><span>Read time</span><strong>{{ file_summary.read_time_ms }} ms</strong></article>
     </section>
 
-    <!-- Export Panel: Grouped export options -->
-    <section class="panel export-panel" aria-label="Report exports">
-      <div class="section-heading">
-        <h2>Export</h2>
-      </div>
-      <div class="table-wrap">
-        <div class="export-options">
-          <button type="button" class="link-button" id="download-markdown" data-export="markdown">
-            <span class="icon">📄</span>
-            <span class="label">Export Markdown</span>
-          </button>
-          <button type="button" class="link-button" id="download-html" data-export="html">
-            <span class="icon">🌐</span>
-            <span class="label">Export HTML</span>
-          </button>
-          <button type="button" class="link-button" id="download-json" data-export="json">
-            <span class="icon">📋</span>
-            <span class="label">Export JSON</span>
-          </button>
-        </div>
-        <p class="export-note" i18n-key="export-note">
-          JSON exports include capped top-value strings and signal details that may contain dataset content; preview rows are excluded.
-        </p>
-      </div>
-    </section>
-
     <p class="result-note" i18n-key="profiling-scope">
       DatasetPeek profiles the full uploaded file or S3 object when it is within the size limit. If the object is an exported sample, these results describe that sample.
     </p>
+
     <script type="application/json" id="markdown-report-data">{{ markdown_report | tojson }}</script>
     <script type="application/json" id="html-report-data">{{ html_report | tojson }}</script>
     <script type="application/json" id="profile-json-data">{{ profile_json | tojson }}</script>

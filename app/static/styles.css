@@ -799,58 +799,116 @@ summary {
 
 /* Export Panel Styles */
 .export-panel {
-  border-color: var(--highlight-border);
-  background: linear-gradient(180deg, #ffffff 0%, #f0f7ff 100%);
+  margin-top: 0.75rem;
+  padding: 0.7rem 0.85rem;
 }
 
-.export-panel .section-heading {
-  margin-bottom: 0.6rem;
+.export-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.export-toolbar h2 {
+  font-size: 1rem;
 }
 
 .export-options {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
   margin: 0;
 }
 
-.export-options .link-button {
-  padding: 0.7rem 1rem;
-  border-radius: 10px;
-  background: var(--accent);
-  color: white;
-  font-size: 0.94rem;
+.export-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-width: 7.5rem;
+  padding: 0.48rem 0.72rem;
+  font-size: 0.84rem;
   font-weight: 600;
-  text-decoration: none;
-  text-align: center;
-  transition: background-color 120ms ease, box-shadow 120ms ease;
-  border: 1px solid var(--accent);
 }
 
-.export-options .link-button:hover {
-  background: #262b4e;
-  box-shadow: 0 6px 14px rgba(47, 53, 93, 0.14);
+.export-disclosure {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.export-info {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border-color: var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  box-shadow: none;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.export-info:hover,
+.export-info:focus-visible {
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: none;
+  transform: none;
 }
 
 .export-note {
-  margin: 0.8rem 0 0;
+  position: absolute;
+  z-index: 3;
+  right: 0;
+  top: calc(100% + 0.45rem);
+  width: min(330px, calc(100vw - 2rem));
+  margin: 0;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
   color: var(--muted);
-  font-size: 0.86rem;
+  box-shadow: 0 10px 24px rgba(47, 53, 93, 0.12);
+  font-size: 0.8rem;
   line-height: 1.4;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-0.2rem);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.export-disclosure:hover .export-note,
+.export-disclosure:focus-within .export-note {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 /* Responsive: export panel on narrow screens */
 @media (max-width: 720px) {
   .export-panel {
-    border-width: 1px;
+    margin-top: 0.65rem;
+  }
+
+  .export-toolbar {
+    display: grid;
   }
 
   .export-options {
-    grid-template-columns: 1fr;
+    display: flex;
   }
 
-  .export-options .link-button {
-    min-height: 3rem;
+  .export-button {
+    flex: 1 1 5.5rem;
+    min-width: 0;
+  }
+
+  .export-disclosure {
+    flex: 0 0 auto;
   }
 }
 
