@@ -491,6 +491,27 @@ def test_routes_render_profile_and_sample_sets():
     assert "Boolean disguised as string" in analyze_response.text
 
 
+def test_profiling_scope_note_stays_with_file_summary():
+    client = RobynClient(create_app())
+    csv_bytes = (FIXTURE_DIR / "sample_profile.csv").read_bytes()
+
+    response = client.post(
+        "/analyze",
+        files={"dataset": {"filename": "sample_profile.csv", "content": csv_bytes}},
+    )
+
+    assert response.status_code == 200
+    summary_block = re.search(r'<section class="summary-block".*?</section>', response.text, re.S)
+    assert summary_block is not None
+    block = summary_block.group()
+    assert 'class="scope-note"' in block
+    assert 'i18n-key="profiling-scope"' in block
+    assert "Scope" in block
+    assert "profiles the full uploaded file or S3 object" in block
+    assert "exported sample" in block
+    assert 'class="result-note"' not in response.text
+
+
 def test_routes_render_profile_json_download_and_privacy_disclosure():
     client = RobynClient(create_app())
     csv_bytes = (FIXTURE_DIR / "sample_profile.csv").read_bytes()

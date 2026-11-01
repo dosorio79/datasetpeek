@@ -530,6 +530,10 @@ button:disabled:hover {
   color: var(--error);
 }
 
+.summary-block {
+  margin-bottom: 0.75rem;
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -538,6 +542,7 @@ button:disabled:hover {
 
 .summary-grid > .stat {
   min-width: 0;
+  margin-bottom: 0;
 }
 
 .result-meta-row {
@@ -549,11 +554,28 @@ button:disabled:hover {
   margin: -0.05rem 0 0.95rem;
 }
 
-.result-note {
-  margin: 0;
+.scope-note {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin: 0.45rem 0 0;
+  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--highlight-border);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
   color: var(--muted);
-  font-size: 0.9rem;
-  flex: 1 1 560px;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.scope-label {
+  flex: 0 0 auto;
+  color: var(--highlight);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .report-actions {
@@ -972,6 +994,12 @@ summary {
   .section-heading {
     flex-direction: column;
     align-items: start;
+  }
+
+  .scope-note {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.2rem;
   }
 
   .guidance-grid {

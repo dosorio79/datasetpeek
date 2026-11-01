@@ -67,6 +67,8 @@ def test_upload_cycle_and_download_reports(app_url, browser_page, tmp_path):
     expect(export_note).to_have_css("opacity", "0")
     page.get_by_role("button", name="JSON export limitations").focus()
     expect(export_note).to_have_css("opacity", "1")
+    expect(page.locator(".summary-block .scope-note")).to_be_visible()
+    expect(page.locator(".scope-note")).to_contain_text("exported sample")
     expect(page.locator("#sample-set-label")).to_have_text("Sample 1")
     assert _visible_sample_ids(page) == expected_samples[0]
     assert len(analyze_requests) == 1, (
