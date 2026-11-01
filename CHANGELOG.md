@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project uses semantic versioning tags.
 
+## [0.5.1] - 2026-11-01
+
+### Changed
+- Moved report exports above the file summary and aligned the export panel with the existing results-card design.
+- Reduced the export panel footprint with compact controls and moved the JSON content disclosure into an accessible hover/focus tooltip.
+
 ## [0.5.0] - 2026-10-31
 
 ### Added

@@ -7,7 +7,7 @@
 
 **Name:** DatasetPeek  
 **Type:** Single-page web app  
-**Current version:** 0.5.0
+**Current version:** 0.5.1
 
 **Goal:**
 > Understand a dataset in seconds.
@@ -76,7 +76,7 @@ This version should improve demo readiness without adding full EDA behavior, per
 
 ---
 
-### 0.5.0 — Current Version / Profile Model JSON
+### 0.5.0 — Previous Version / Profile Model JSON
 
 This release adds the profile-model JSON export. It shipped on 2026-10-31. Its
 design is documented in
@@ -117,6 +117,19 @@ Implementation notes:
   are included and may contain dataset content
 
 This version makes the 0.4.0 triage model reusable without turning DatasetPeek into a data extraction or persistence tool.
+
+---
+
+### 0.5.1 — Current Version / Export Panel Patch
+
+This patch keeps the 0.5.0 profiling and export contracts unchanged while
+improving the report-download hierarchy.
+
+Shipped scope:
+- place report exports before the file-summary cards
+- align the export panel with the existing results-card design
+- reduce the panel footprint with compact report controls
+- keep JSON content limitations available through an accessible hover/focus disclosure
 
 ---
 
@@ -163,7 +176,7 @@ Existing tools:
 
 ---
 
-## 6. Current Product Behavior (0.5.0)
+## 6. Current Product Behavior (0.5.1)
 
 ### Input
 - Upload:
