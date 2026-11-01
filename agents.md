@@ -241,6 +241,22 @@ load unrelated skills or stack multiple process skills that prescribe the same
 step; follow the more specific workflow and include only relevant supporting
 skills.
 
+### Superpowers workflow boundary
+
+- Use the relevant Superpowers workflow for complex work: unclear product or
+  architecture decisions, multi-component changes, difficult diagnosis,
+  security-sensitive boundaries, and implementation plans with several
+  dependent steps.
+- For a complex feature, use `brainstorming` before design, `writing-plans`
+  after the design is approved, `test-driven-development` where practical,
+  and `verification-before-completion` before reporting success.
+- Skip brainstorming, formal plans, worktrees, and subagents for localized,
+  low-risk changes whose implementation is already clear. Apply the smallest
+  relevant testing and verification workflow instead.
+- Use subagents only for genuinely independent workstreams with non-overlapping
+  write surfaces. The primary agent remains responsible for integration and
+  fresh verification of the combined result.
+
 ### Keep work efficient and cost-conscious
 
 - Choose the smallest sufficient approach: inspect only relevant files, make
@@ -252,6 +268,17 @@ skills.
   the expected time or quality benefit outweighs coordination cost.
 - Prefer the least expensive model and tools that can reliably complete the
   task; escalate only when complexity or uncertainty warrants it.
+- Route mechanical, read-only, and easily checked work to a fast low-cost model;
+  use a general coding model for focused implementation and tests; reserve the
+  strongest reasoning model for architecture, ambiguous debugging, security or
+  privacy boundaries, release decisions, and independent review of high-risk
+  changes.
+- Do not split a tightly coupled task across models merely to use parallelism.
+  Account for coordination and review cost, and keep integration decisions with
+  one capable owner.
+- Independently review security-sensitive, destructive, credential, release,
+  and data-handling boundaries with a sufficiently strong model even when
+  cheaper models performed mechanical preparation.
 - Never skip a required skill, approval gate, security check, or verification
   step merely to save time or tokens.
 
