@@ -176,6 +176,31 @@ Before finishing a task:
 
 ---
 
+## Maintainer Release Checklist
+
+This repository uses `master` as the production branch; there is no `main`
+branch. Follow the full flow in [CONTRIBUTING.md](CONTRIBUTING.md):
+
+1. Merge feature and fix PRs into `dev` after required checks pass.
+2. Prepare the version, lockfile, changelog, README, PRD, and versioned examples
+   on a short-lived release branch from current `dev`, then merge its PR into
+   `dev`.
+3. Open the same-repository release PR from `dev` to `master`. Merge it with a
+   merge commit after the combined diff and required checks pass; never squash
+   or rebase the long-lived branches.
+4. Tag the verified `master` release merge as `vX.Y.Z` and publish the release
+   notes. Verify deployment separately when applicable.
+5. Synchronize `master` back into `dev` through a fresh
+   `chore/sync-release-*` branch and PR, merging that PR with a merge commit.
+6. Close superseded or incorrectly based release PRs and remove merged
+   short-lived remote branches. Do not close unrelated Dependabot or security
+   PRs as general cleanup.
+
+Do not push directly to protected `dev` or `master`, delete either long-lived
+branch, or treat a merged PR as proof that a deployment completed.
+
+---
+
 ## Execution Strategy for Agents
 
 When implementing features:
